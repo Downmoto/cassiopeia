@@ -1,10 +1,14 @@
 # Cassiopeia Agent Instructions
 
-Cassiopeia is a general-purpose agent persona harness for workflow automation. Its
-long-term purpose is to support multiple gateways, starting with Telegram and
-Discord, and to serve as the agent/persona backend for its sister app Castellan.
-Castellan is planned as a GUI around Cassiopeia plus additional tools such as a
-code/text editor, calendar, and related local workflow surfaces.
+Cassiopeia is a local-first agent persona and workflow runtime for workflow
+automation. Its 1.0 scope is defined in `docs/cassiopeia-1.0-scope.md`; read that
+document before making product, architecture, or roadmap decisions.
+
+Gateways such as the TUI, Telegram, Discord, and future integrations are access
+points into the same core system. The CLI is an administration and debugging
+surface, not a gateway. Castellan is an optional sister app that wraps Cassiopeia
+in a GUI and adds related workflow surfaces such as a code/text editor and
+calendar, but Castellan is not required for Cassiopeia 1.0.
 
 This repository is currently a Python CLI project built around LangGraph agent
 control flow, LangChain adapters, Click commands, limited Textual TUI support, and
@@ -39,6 +43,10 @@ cannot be run, explain why and identify the remaining risk.
 - Target Python 3.12 or newer within the version range declared in `pyproject.toml`.
 - Keep changes consistent with the existing project structure under `src/`, `tests/`,
   and `scripts/`.
+- Use `docs/cassiopeia-1.0-scope.md` as the product/architecture source of truth.
+- Keep CLI work framed as administration/debugging unless the scope document says
+  otherwise.
+- Treat the TUI as the local interactive gateway.
 - Prefer the existing stack and local patterns before introducing new abstractions.
 - Use Ruff formatting and linting conventions from `pyproject.toml`.
 - Keep mypy and pyright passing.
