@@ -33,7 +33,7 @@ uv run cass run "hello"
 To make a real Codex SDK call with your Codex auth:
 
 ```sh
-uv run cass ask "Write one short sentence about Cassiopeia."
+uv run cass ask "Write one short sentence about cassiopeia."
 ```
 
 ## Checks

@@ -1,21 +1,21 @@
-# Cassiopeia 1.0 Scope
+# cassiopeia 1.0 Scope
 
-This document captures the current working definition of Cassiopeia 1.0. It is
+This document captures the current working definition of cassiopeia 1.0. It is
 intended to narrow the product, architecture, and feature boundaries before major
 implementation work starts.
 
 ## Project Identity
 
-Cassiopeia is a local-first agent persona and workflow runtime for workflow
+cassiopeia is a local-first agent persona and workflow runtime for workflow
 automation.
 
 Gateways such as the TUI, Telegram, Discord, and future integrations are access
 points into the same core system. The CLI is an administration and debugging
 surface, not a gateway. Castellan is an optional and recommended sister app that
-wraps Cassiopeia in a GUI and adds related workflow surfaces such as a code/text
-editor and calendar, but Castellan is not required for Cassiopeia 1.0.
+wraps cassiopeia in a GUI and adds related workflow surfaces such as a code/text
+editor and calendar, but Castellan is not required for cassiopeia 1.0.
 
-Cassiopeia owns:
+cassiopeia owns:
 
 - personas
 - sessions and conversation history
@@ -31,7 +31,7 @@ Cassiopeia owns:
 
 ## 1.0 Non-Goals
 
-- Rich GUI features belong to Castellan, not Cassiopeia 1.0.
+- Rich GUI features belong to Castellan, not cassiopeia 1.0.
 - Persistent autonomous multi-agent teams are post-1.0.
 - Open-ended subagent conversations are post-1.0.
 
@@ -77,11 +77,15 @@ Post-1.0:
 
 ## Implementation Milestones
 
+Detailed milestone plans live in `docs/milestones/`. Use
+`docs/milestones/template.md` when defining later milestones.
+
 1. Project foundation: package layout, config loading, `~/.cassiopeia/` init,
-   JSON schema validation, and CLI skeleton.
+   JSON schema validation, and CLI skeleton. See
+   `docs/milestones/01-project-foundation.md`.
 2. Storage spike: prove embedded SurrealDB for sessions, events, memory, vector
    search, and graph relationships. Decide pass/fail before building the real
-   storage layer.
+   storage layer. See `docs/milestones/02-storage-spike.md`.
 3. Core domain models: workspaces, personas, sessions, events, permissions,
    memories, workflows, and hooks as typed models.
 4. Storage layer: repository interfaces plus SurrealDB implementation.
@@ -104,7 +108,7 @@ Post-1.0:
 
 ## Definition of Done
 
-Cassiopeia 1.0 is done when a user can:
+cassiopeia 1.0 is done when a user can:
 
 1. Run `cass init` and get a valid `~/.cassiopeia/` home.
 2. Create a workspace with `root_path` and workspace manager persona.
@@ -127,7 +131,7 @@ Cassiopeia 1.0 is done when a user can:
 18. Manage and inspect all major concepts from the CLI.
 19. Use the minimal TUI to chat, review permissions, review memories, and inspect
     workflows.
-20. Install Cassiopeia through a robust curl-based install script.
+20. Install cassiopeia through a robust curl-based install script.
 21. Run `scripts/verify` successfully.
 
 ## Personas
@@ -177,7 +181,7 @@ A persona JSON should include:
 - created/updated timestamps
 
 Tool permissions should also use a whitelist model. A persona can use only tools
-explicitly available to it, plus safe internal capabilities Cassiopeia requires
+explicitly available to it, plus safe internal capabilities cassiopeia requires
 for normal operation. Security rings still apply on top of tool availability.
 
 Example tool policy:
@@ -260,13 +264,13 @@ values inside an existing session.
 
 ## Subagents
 
-Cassiopeia 1.0 supports bounded task-scoped subagents, not persistent autonomous
+cassiopeia 1.0 supports bounded task-scoped subagents, not persistent autonomous
 agent teams.
 
 A primary/orchestrator persona may create subagents for delegated work. When
-creating a subagent, Cassiopeia should first try to use an existing persona that
-fits the task. If no persona fits, Cassiopeia may create a temporary generic
-worker. After the task completes, Cassiopeia can ask whether the generic worker
+creating a subagent, cassiopeia should first try to use an existing persona that
+fits the task. If no persona fits, cassiopeia may create a temporary generic
+worker. After the task completes, cassiopeia can ask whether the generic worker
 should become a saved persona.
 
 A subagent has:
@@ -284,7 +288,7 @@ A subagent has:
 Subagents report back to the orchestrator. They are not independent conversation
 participants in 1.0.
 
-When creating a subagent, Cassiopeia should run a persona matching step unless
+When creating a subagent, cassiopeia should run a persona matching step unless
 the user or orchestrator explicitly requests a specific persona.
 
 Persona matching inputs:
@@ -336,7 +340,7 @@ Subagent results should include:
 
 ## Skills
 
-Cassiopeia 1.0 should support the Agent Skills `SKILL.md` specification at:
+cassiopeia 1.0 should support the Agent Skills `SKILL.md` specification at:
 
 <https://agentskills.io/specification>
 
@@ -344,7 +348,7 @@ A skill is a directory containing a required `SKILL.md` file with YAML
 frontmatter and Markdown instructions. Optional directories include `scripts/`,
 `references/`, and `assets/`.
 
-Cassiopeia should act as a client implementor of the Agent Skills spec:
+cassiopeia should act as a client implementor of the Agent Skills spec:
 
 - index skill metadata globally
 - expose selected skills to personas
@@ -352,14 +356,14 @@ Cassiopeia should act as a client implementor of the Agent Skills spec:
 - load referenced resources only as needed
 - avoid forking or redefining the skill format
 
-Open question: how should Cassiopeia handle execution of skill scripts?
+Open question: how should cassiopeia handle execution of skill scripts?
 
 ## Tools, Workflows, and Hooks
 
 Tools are executable capabilities such as web access, shell access, gateway
 actions, or local file operations.
 
-Workflows are graph-based automations created by the user and Cassiopeia. They
+Workflows are graph-based automations created by the user and cassiopeia. They
 can run for several reasons, including:
 
 - explicit user trigger
@@ -367,7 +371,7 @@ can run for several reasons, including:
 - agent trigger
 - scheduled or gateway event trigger
 
-Hooks connect typed Cassiopeia events to workflows.
+Hooks connect typed cassiopeia events to workflows.
 
 A workflow should have:
 
@@ -402,7 +406,7 @@ Script nodes must go through the same security-ring and permission system as
 other executable actions. They should not bypass tool permissions simply because
 they are part of a workflow.
 
-Workflows should be stored as JSON files. Cassiopeia can validate, propose, and
+Workflows should be stored as JSON files. cassiopeia can validate, propose, and
 edit workflow files, but persistent workflow creation requires explicit user
 confirmation.
 
@@ -420,7 +424,7 @@ The `<workspace-slug>` path segment should be the workspace slug: a stable,
 human-readable, filesystem-safe identifier. It is separate from the workspace
 display name so a display rename does not necessarily change paths.
 
-Hooks should listen to typed Cassiopeia events, not random internal function
+Hooks should listen to typed cassiopeia events, not random internal function
 calls.
 
 Minimum hook event types for 1.0:
@@ -492,7 +496,7 @@ predictably:
 
 ## Security Rings
 
-Cassiopeia uses security rings for autonomous decisions. Rings apply broadly to
+cassiopeia uses security rings for autonomous decisions. Rings apply broadly to
 tools, workflow actions, gateway actions, subagent creation, skill script
 execution, memory-sensitive actions, and similar operations.
 
@@ -554,10 +558,10 @@ Permission grants are specific to action and scope, not broad per-ring approvals
 Persistent `always allow` grants live in a separate permissions store, not inside
 persona definitions.
 
-Ring assignments are configurable by the user, but Cassiopeia enforces hard
+Ring assignments are configurable by the user, but cassiopeia enforces hard
 minimum rings for high-risk actions.
 
-Permission prompts are decided by Cassiopeia core and rendered by gateways. A
+Permission prompts are decided by cassiopeia core and rendered by gateways. A
 prompt includes deterministic action metadata and may include an optional
 agent-provided reason.
 
@@ -594,12 +598,12 @@ Memory can be created through several paths:
 - workflow memory-write nodes
 - manual or imported records through CLI/TUI commands or files
 
-Agent-inferred memory should be conservative. Cassiopeia should prefer durable
+Agent-inferred memory should be conservative. cassiopeia should prefer durable
 preferences, project facts, and settled decisions over incidental details. New or
 updated memories should be exposed to the user immediately with a delete/reject
 affordance.
 
-When an agent receives a message, Cassiopeia should build a context packet rather
+When an agent receives a message, cassiopeia should build a context packet rather
 than injecting all history or all memory. Memory retrieval should be scoped,
 ranked, and compact.
 
@@ -620,16 +624,16 @@ Open question: what memory storage and retrieval strategy should 1.0 use?
 
 ## Storage
 
-Cassiopeia should use JSON files for user-authored definitions such as personas,
+cassiopeia should use JSON files for user-authored definitions such as personas,
 workflows, workspace configuration, and gateway bindings.
 
-SurrealDB is the preferred candidate for runtime state because Cassiopeia needs
+SurrealDB is the preferred candidate for runtime state because cassiopeia needs
 document-like records, graph relationships, semantic/vector search, and durable
 agent memory. Runtime state includes sessions, event history, memory records,
 permission grants, workflow runs, subagent runs, indexes, and graph
 relationships.
 
-Before committing fully to SurrealDB, Cassiopeia should include an early storage
+Before committing fully to SurrealDB, cassiopeia should include an early storage
 spike to prove that embedded persistent SurrealDB works cleanly from Python for
 the 1.0 use case.
 
@@ -648,7 +652,7 @@ The storage spike should verify:
 Open question: should SurrealDB be required for 1.0, or should storage be
 abstracted with SurrealDB as the intended default backend?
 
-Cassiopeia core should use a storage/repository interface rather than calling
+cassiopeia core should use a storage/repository interface rather than calling
 SurrealDB directly from orchestration, gateway, workflow, or memory code. For
 1.0, SurrealDB can be the only implemented runtime storage backend if the spike
 passes. The abstraction exists to keep SurrealQL and database-specific details
@@ -656,7 +660,7 @@ contained inside the storage layer, not to require multiple backends in 1.0.
 
 ## Model Providers
 
-Cassiopeia should use a provider abstraction for model calls. Personas,
+cassiopeia should use a provider abstraction for model calls. Personas,
 workspaces, and global config can choose provider/model settings, with sensible
 fallback defaults.
 
@@ -669,15 +673,15 @@ Other providers are secondary and can be implemented as time allows. Large
 providers or provider routers such as OpenRouter may be added before 1.0, but
 they should not block the core 1.0 scope unless explicitly promoted to required.
 
-Required provider capabilities for Cassiopeia 1.0:
+Required provider capabilities for cassiopeia 1.0:
 
 - chat
 - tool calling
 - structured output
 
-LangChain should handle most provider adaptation, so Cassiopeia should not build
+LangChain should handle most provider adaptation, so cassiopeia should not build
 provider-specific orchestration unless necessary. Providers and models may still
-need capability metadata so Cassiopeia can fail clearly or degrade gracefully when
+need capability metadata so cassiopeia can fail clearly or degrade gracefully when
 a selected model does not support a required capability well.
 
 Embeddings should use a separate provider abstraction from chat/model calls.
@@ -696,7 +700,7 @@ Global config and workspace config can define an active embedding profile. For
 1.0, each workspace should use one active embedding profile. Memory embeddings
 must record the provider, model, vector dimension, and creation timestamp. If a
 workspace changes embedding profile, existing memory embeddings should be marked
-stale and Cassiopeia should provide a reindex path.
+stale and cassiopeia should provide a reindex path.
 
 ## Workspaces
 
@@ -705,7 +709,7 @@ workflows, hooks, permissions, and gateway mappings around a project or life
 area.
 
 Every session belongs to exactly one workspace. If the user does not choose one,
-Cassiopeia uses a default workspace.
+cassiopeia uses a default workspace.
 
 A workspace has:
 
@@ -728,7 +732,7 @@ The global orchestrator is used when:
 
 - no workspace is selected
 - the workspace has no manager configured
-- the user is doing global Cassiopeia administration
+- the user is doing global cassiopeia administration
 - a gateway event cannot be mapped to a workspace yet
 
 The workspace manager is the default persona, not the only persona allowed in the
@@ -753,18 +757,18 @@ configuration changes without explicit user confirmation.
 
 - How should skill scripts be executed or gated?
 - What is the minimum workflow and hook system for 1.0?
-- What storage backend should Cassiopeia use?
+- What storage backend should cassiopeia use?
 - What should the CLI/TUI surface include for 1.0?
 - What is the minimum viable workspace manager behaviour?
 
 ## Gateways
 
-Gateways are access points into Cassiopeia, not separate agent brains. Gateway
-implementations should map inbound platform events into Cassiopeia sessions and
+Gateways are access points into cassiopeia, not separate agent brains. Gateway
+implementations should map inbound platform events into cassiopeia sessions and
 render outbound responses, approval prompts, memory notices, and workflow status
 updates in platform-appropriate ways.
 
-Cassiopeia 1.0 should include:
+cassiopeia 1.0 should include:
 
 - CLI commands for local development, administration, and debugging
 - minimal TUI as the local interactive gateway
@@ -787,7 +791,7 @@ Inbound:
 - normalise inbound messages and events
 - identify sender/user
 - identify conversation location, such as chat, channel, or thread
-- resolve or create a Cassiopeia session
+- resolve or create a cassiopeia session
 - support an explicit new-session command with workspace/persona selection
 - pass attachments or links as structured event data, even if processing is
   limited
@@ -805,7 +809,7 @@ Operational:
 - start and stop cleanly
 - reconnect or fail visibly
 - log gateway events
-- expose configuration through Cassiopeia settings
+- expose configuration through cassiopeia settings
 - avoid gateway-specific logic leaking into core
 
 Rich media sending, voice, slash-command polish, and complex moderation features
@@ -835,12 +839,12 @@ Example external gateway forms:
 /new workspace:personal persona:calendar-assistant Plan next week
 ```
 
-If workspace or persona is omitted, Cassiopeia should resolve the workspace from
+If workspace or persona is omitted, cassiopeia should resolve the workspace from
 the gateway binding or global default, then resolve the persona from the workspace
 manager or global orchestrator fallback.
 
-Cassiopeia 1.0 should avoid mid-session workspace/persona mutation commands. If
-the user asks to switch workspace or persona, Cassiopeia should start a new
+cassiopeia 1.0 should avoid mid-session workspace/persona mutation commands. If
+the user asks to switch workspace or persona, cassiopeia should start a new
 session or prompt to do so.
 
 Gateway bindings should map external platform locations to default workspaces and
@@ -887,7 +891,7 @@ When `/new` omits workspace/persona:
 
 ## CLI
 
-The CLI is the primary administration and debugging surface for Cassiopeia 1.0.
+The CLI is the primary administration and debugging surface for cassiopeia 1.0.
 It should be capable of bootstrapping, inspecting, repairing, and exercising the
 core system even when external gateways are not running.
 
@@ -930,7 +934,7 @@ commands, and eventually Castellan.
 
 ## File Layout
 
-Cassiopeia should use a global `~/.cassiopeia/` directory for definitions,
+cassiopeia should use a global `~/.cassiopeia/` directory for definitions,
 configuration, and runtime data.
 
 Initial layout:
@@ -982,7 +986,7 @@ Example:
 }
 ```
 
-Cassiopeia can load `.env` for local development. Raw tokens should not appear in
+cassiopeia can load `.env` for local development. Raw tokens should not appear in
 persona, workspace, workflow, hook, or gateway definition files. Validation
 should warn if config appears to contain raw secrets. OS keychain/keyring support
 can be added later.
