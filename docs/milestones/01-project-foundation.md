@@ -56,15 +56,15 @@ should not implement the agent runtime.
 
 ## Acceptance Criteria
 
-- [ ] Running `cass init` on a clean machine creates the expected
+- [x] Running `cass init` on a clean machine creates the expected
       `~/.cassiopeia/` structure without storing secrets.
-- [ ] Running `cass init` against an existing cassiopeia home fails clearly and
+- [x] Running `cass init` against an existing cassiopeia home fails clearly and
       does not destroy existing user files.
-- [ ] The cassiopeia home path can be overridden for tests/development.
-- [ ] CLI help lists the intended administration command groups.
-- [ ] Invalid initial config fails with a clear error.
-- [ ] Tests cover the foundation behaviours.
-- [ ] `scripts/verify` passes, or any failure is documented with the remaining
+- [x] The cassiopeia home path can be overridden for tests/development.
+- [x] CLI help lists the intended administration command groups.
+- [x] Invalid initial config fails with a clear error.
+- [x] Tests cover the foundation behaviours.
+- [x] `scripts/verify` passes, or any failure is documented with the remaining
       risk.
 
 ## Verification
