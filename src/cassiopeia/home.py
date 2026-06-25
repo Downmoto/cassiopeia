@@ -1,3 +1,5 @@
+"""Bootstrap the cassiopeia home directory layout."""
+
 import json
 from pathlib import Path
 from typing import Final
@@ -20,7 +22,12 @@ JSON_FILES: Final[dict[str, object]] = {
 
 
 def initialise_home(home: Path) -> Path:
-    """Create the cassiopeia home directory."""
+    """Create a new cassiopeia home directory and starter definition files.
+
+    This is a bootstrap operation, not a repair or migration operation. Existing
+    homes are rejected so user-authored files are never silently interpreted or
+    rewritten by `cass init`.
+    """
 
     resolved_home = home.expanduser()
     if resolved_home.exists():

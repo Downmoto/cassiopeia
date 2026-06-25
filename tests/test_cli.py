@@ -2,7 +2,7 @@ from pathlib import Path
 
 from click.testing import CliRunner
 
-from cli.main import main
+from cli.main import PLACEHOLDER_GROUPS, main
 
 
 def test_ask_command_smoke() -> None:
@@ -10,6 +10,24 @@ def test_ask_command_smoke() -> None:
 
     assert result.exit_code == 0
     assert result.output == "hello world\n" or result.output == "hello world: hello\n"
+
+
+def test_help_lists_administration_groups() -> None:
+    result = CliRunner().invoke(main, ["--help"])
+
+    assert result.exit_code == 0
+    for group_name in PLACEHOLDER_GROUPS:
+        assert group_name in result.output
+
+
+def test_placeholder_groups_fail_clearly() -> None:
+    for group_name in PLACEHOLDER_GROUPS:
+        result = CliRunner().invoke(main, [group_name])
+
+        assert result.exit_code == 1
+        assert (
+            f"`cass {group_name}` is reserved for future administration commands." in result.output
+        )
 
 
 def test_init_creates_home(tmp_path: Path) -> None:

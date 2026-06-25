@@ -39,7 +39,7 @@ should not implement the agent runtime.
 
 ## Tasks
 
-- [ ] Define the initial module layout under `src/cassiopeia/`.
+- [x] Define the initial module layout under `src/cassiopeia/`.
 - [x] Add settings for cassiopeia home, environment loading, and cache-safe local
       development.
 - [x] Implement `cass init`.
@@ -47,12 +47,12 @@ should not implement the agent runtime.
       `config.json`, `workspaces.json`, `hooks.json`, `permissions.json`,
       `personas/`, `skills/`, `workflows/`, `gateways/`, and `data/`.
 - [x] Add validation for the initial global config shape.
-- [ ] Add CLI command groups for `session`, `workspace`, `persona`, `skill`,
+- [x] Add CLI command groups for `session`, `workspace`, `persona`, `skill`,
       `workflow`, `hook`, `memory`, `permission`, `gateway`, and `storage`.
-- [ ] Ensure commands that are not implemented yet fail clearly instead of
+- [x] Ensure commands that are not implemented yet fail clearly instead of
       pretending to work.
 - [x] Add focused tests for `cass init`, config loading, and validation.
-- [ ] Update documentation if implementation details diverge from the scope.
+- [x] Update documentation if implementation details diverge from the scope.
 
 ## Acceptance Criteria
 
