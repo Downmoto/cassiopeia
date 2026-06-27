@@ -45,7 +45,7 @@ Required for 1.0:
 - Agent Skills spec indexing and assignment
 - sessions with persisted history
 - memory with session, workspace, persona, and user scopes
-- SurrealDB runtime storage if the spike passes, behind a storage interface
+- Turso/libSQL runtime storage if the spike passes, behind a storage interface
 - security rings and permission grants
 - JSON workflows with core node types, including script node
 - hook registries mapping events to workflows
@@ -84,12 +84,13 @@ Detailed milestone plans live in `docs/milestones/`. Use
 1. Project foundation: package layout, config loading, `~/.cassiopeia/` init,
    JSON schema validation, and CLI skeleton. See
    `docs/milestones/01-project-foundation.md`.
-2. Storage spike: prove embedded SurrealDB for sessions, events, memory, vector
-   search, and graph relationships. Decide pass/fail before building the real
-   storage layer. See `docs/milestones/02-storage-spike.md`.
+2. Storage spike: prove Turso/libSQL for sessions, events, memory, vector
+   search, relational relationship queries, and concurrent local writes. Decide
+   pass/fail before building the real storage layer. See
+   `docs/milestones/02-storage-spike.md`.
 3. Core domain models: workspaces, personas, sessions, events, permissions,
    memories, workflows, and hooks as typed models.
-4. Storage layer: repository interfaces plus SurrealDB implementation.
+4. Storage layer: repository interfaces plus Turso/libSQL implementation.
 5. Provider layer: OpenAI, Ollama, embeddings, Pydantic AI integration,
    structured output, and tool calling.
 6. Agent runtime: persona execution, context packet building, memory retrieval,
@@ -628,15 +629,17 @@ Open question: what memory storage and retrieval strategy should 1.0 use?
 cassiopeia should use JSON files for user-authored definitions such as personas,
 workflows, workspace configuration, and gateway bindings.
 
-SurrealDB is the preferred candidate for runtime state because cassiopeia needs
-document-like records, graph relationships, semantic/vector search, and durable
-agent memory. Runtime state includes sessions, event history, memory records,
-permission grants, workflow runs, subagent runs, indexes, and graph
-relationships.
+Turso/libSQL is the preferred candidate for runtime state because cassiopeia
+needs local-first durable records, SQLite-compatible querying, semantic/vector
+search, and safe concurrent writes when multiple local sessions or gateways use
+cassiopeia at the same time. Runtime state includes sessions, event history,
+memory records, permission grants, workflow runs, subagent runs, indexes, and
+relationship tables.
 
-Before committing fully to SurrealDB, cassiopeia should include an early storage
-spike to prove that embedded persistent SurrealDB works cleanly from Python for
-the 1.0 use case.
+Before committing fully to Turso, cassiopeia should include an early storage
+spike to prove that local persistent Turso/libSQL works cleanly from Python for
+the 1.0 use case. The spike should treat Turso's beta status as a reliability
+risk to prove rather than an assumption.
 
 The storage spike should verify:
 
@@ -644,20 +647,25 @@ The storage spike should verify:
   `~/.cassiopeia/data/`
 - defining basic workspace, session, event, and memory records
 - appending and querying session history
-- creating graph relations between workspaces, sessions, personas, and memories
-- storing embeddings and running semantic/vector search
-- handling multi-write operations reliably enough for event processing
+- modelling relationships between workspaces, sessions, personas, and memories
+- storing embeddings and running semantic/vector search with Turso vector
+  functions
+- enabling MVCC and using `BEGIN CONCURRENT` where appropriate
+- handling multi-write and multi-session operations reliably enough for event
+  processing
+- detecting retryable conflict/busy errors and retrying safely
 - startup and shutdown behaviour
 - dependency and install behaviour with `uv`
 
-Open question: should SurrealDB be required for 1.0, or should storage be
-abstracted with SurrealDB as the intended default backend?
+Open question: should Turso/libSQL be required for 1.0, or should storage be
+abstracted with plain SQLite plus a secondary vector strategy as a fallback?
 
 cassiopeia core should use a storage/repository interface rather than calling
-SurrealDB directly from orchestration, gateway, workflow, or memory code. For
-1.0, SurrealDB can be the only implemented runtime storage backend if the spike
-passes. The abstraction exists to keep SurrealQL and database-specific details
-contained inside the storage layer, not to require multiple backends in 1.0.
+Turso/libSQL directly from orchestration, gateway, workflow, or memory code. For
+1.0, Turso can be the only implemented runtime storage backend if the spike
+passes. The abstraction exists to keep SQL, transaction/retry logic, and
+database-specific details contained inside the storage layer, not to require
+multiple backends in 1.0.
 
 ## Model Providers
 
@@ -951,7 +959,7 @@ Initial layout:
   workflows/
   gateways/
   data/
-    surreal/
+    turso/
   <workspace-slug>/
     workspace.json
     hooks.json
@@ -960,8 +968,8 @@ Initial layout:
 ```
 
 Runtime state should live in the storage backend under `data/`, assuming the
-SurrealDB spike passes. User-authored definitions and configuration should live
-in JSON files and directories.
+Turso spike passes. User-authored definitions and configuration should live in
+JSON files and directories.
 
 Skills are stored globally under `~/.cassiopeia/skills/`. Workspaces do not have
 their own skills directory. Users assign skills from the global skill list to

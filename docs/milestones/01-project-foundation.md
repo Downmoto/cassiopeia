@@ -21,7 +21,7 @@ should not implement the agent runtime.
 
 ### Out of Scope
 
-- SurrealDB runtime storage implementation.
+- Turso/libSQL runtime storage implementation.
 - Agent execution, model calls, and Pydantic AI/Pydantic Graph orchestration.
 - Full workspace/persona/workflow semantics.
 - Telegram, Discord, and TUI gateways.
