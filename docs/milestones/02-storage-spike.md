@@ -167,7 +167,7 @@ code, not production CLI or storage-layer code.
 This milestone should not grow into the production storage layer. Keep the code
 small enough to throw away or rewrite cleanly after the storage decision is made.
 
-Detailed decision report: `docs/milestones/02-storage-spike-report.md`.
+Detailed decision report: `docs/02-storage-spike-report.md`.
 
 Useful Turso documentation:
 
