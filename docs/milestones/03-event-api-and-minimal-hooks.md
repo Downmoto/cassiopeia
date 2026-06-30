@@ -71,28 +71,28 @@ event-to-workflow dispatch to the later hooks milestone.
       depending on the production storage implementation.
 - [x] Add a minimal in-process listener registry with deterministic registration
       and delivery order.
-- [ ] Define listener failure behaviour for this early shell, including whether
+- [x] Define listener failure behaviour for this early shell, including whether
       one failed listener prevents later listeners from running.
-- [ ] Add tests for valid events, invalid payloads, correlation/causation
+- [x] Add tests for valid events, invalid payloads, correlation/causation
       fields, listener ordering, and listener failures.
-- [ ] Update documentation if the implemented event model changes terminology
+- [x] Update documentation if the implemented event model changes terminology
       or scope assumptions.
 
 ## Acceptance Criteria
 
-- [ ] Application code has a stable emitter API it can call from later
+- [x] Application code has a stable emitter API it can call from later
       milestones without importing storage or workflow internals.
-- [ ] The minimum 1.0 lifecycle event catalogue is represented by typed event
+- [x] The minimum 1.0 lifecycle event catalogue is represented by typed event
       names and payload models.
-- [ ] Events can be created with consistent ids, timestamps, source metadata,
+- [x] Events can be created with consistent ids, timestamps, source metadata,
       scope metadata, and payload validation.
-- [ ] Emitted events are passed to a storage boundary that can later be backed by
+- [x] Emitted events are passed to a storage boundary that can later be backed by
       Turso/libSQL.
-- [ ] In-process listeners receive emitted events in deterministic order.
-- [ ] Listener failure behaviour is explicit and covered by tests.
-- [ ] Full user-authored hook matching and workflow dispatch remain deferred to
+- [x] In-process listeners receive emitted events in deterministic order.
+- [x] Listener failure behaviour is explicit and covered by tests.
+- [x] Full user-authored hook matching and workflow dispatch remain deferred to
       the hooks milestone.
-- [ ] `scripts/verify` passes, or any failure is documented with the remaining
+- [x] `scripts/verify` passes, or any failure is documented with the remaining
       risk.
 
 ## Verification
@@ -114,8 +114,14 @@ scripts/verify
 - Stored events load payloads through generic `EventPayload`; family-specific
   payload models are opt-in validation for write-time and feature-level logic,
   not a requirement for reading historical records.
+- The event API lives in the `cassiopeia.events` package. Public imports remain
+  available from `cassiopeia.events` while the implementation is split by
+  catalogue, models, emitters, sinks, listener registry, and type primitives.
 - Async listener support should be included from the start.
 - The initial listener shell is for internal integration and tests only.
+- Listener failures do not prevent later in-process listeners from receiving the
+  same event. Failures are collected and raised as a single delivery error after
+  all registered listeners have been called.
 - Full hook registry loading, filtering, ordering, blocking semantics, and
   workflow dispatch belong to the later hooks milestone.
 - The storage layer should receive events through a narrow append boundary

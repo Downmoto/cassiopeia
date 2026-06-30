@@ -1,5 +1,6 @@
 """In-process event listener registry."""
 
+from dataclasses import dataclass
 from typing import Protocol
 
 from cassiopeia.events.models import EventEnvelope
@@ -21,8 +22,35 @@ class EventDispatcher(Protocol):
         ...
 
 
+@dataclass(frozen=True)
+class EventListenerFailure:
+    """Failure raised by one listener while handling an event."""
+
+    listener: EventListener
+    error: Exception
+
+
+class EventDeliveryError(Exception):
+    """Raised after listener delivery when one or more listeners fail."""
+
+    def __init__(
+        self,
+        event: EventEnvelope,
+        failures: tuple[EventListenerFailure, ...],
+    ) -> None:
+        self.event = event
+        self.failures = failures
+        super().__init__(
+            f"{len(failures)} event listener(s) failed while handling {event.type.value}"
+        )
+
+
 class InProcessEventListenerRegistry:
-    """Minimal in-process listener registry with deterministic delivery order."""
+    """Minimal in-process listener registry with deterministic delivery order.
+
+    Listener failures do not prevent later listeners from receiving the event.
+    Any failures are collected and raised together after delivery completes.
+    """
 
     def __init__(self) -> None:
         self._listeners: list[EventListener] = []
@@ -41,5 +69,13 @@ class InProcessEventListenerRegistry:
     async def deliver(self, event: EventEnvelope) -> None:
         """Deliver an event to listeners in registration order."""
 
+        failures: list[EventListenerFailure] = []
+
         for listener in self._listeners:
-            await listener(event)
+            try:
+                await listener(event)
+            except Exception as error:
+                failures.append(EventListenerFailure(listener=listener, error=error))
+
+        if failures:
+            raise EventDeliveryError(event=event, failures=tuple(failures))

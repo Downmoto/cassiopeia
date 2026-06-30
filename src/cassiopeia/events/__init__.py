@@ -3,8 +3,10 @@
 from cassiopeia.events.catalogue import EVENT_TYPE_CATALOGUE, EventTypeDefinition
 from cassiopeia.events.emitters import EnvelopeEventEmitter, EventEmitter
 from cassiopeia.events.listeners import (
+    EventDeliveryError,
     EventDispatcher,
     EventListener,
+    EventListenerFailure,
     InProcessEventListenerRegistry,
 )
 from cassiopeia.events.models import (
@@ -30,9 +32,11 @@ __all__ = [
     "EnvelopeEventEmitter",
     "EventCreate",
     "EventDispatcher",
+    "EventDeliveryError",
     "EventEmitter",
     "EventEnvelope",
     "EventListener",
+    "EventListenerFailure",
     "EventPayload",
     "EventSource",
     "EventSink",

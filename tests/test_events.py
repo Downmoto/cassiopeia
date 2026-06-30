@@ -8,6 +8,7 @@ from cassiopeia.events import (
     EVENT_TYPE_PATTERN,
     EnvelopeEventEmitter,
     EventCreate,
+    EventDeliveryError,
     EventDispatcher,
     EventEmitter,
     EventEnvelope,
@@ -283,3 +284,68 @@ def test_listener_registry_supports_protocol_typed_listeners() -> None:
     emitted = asyncio.run(emit_event(registry))
 
     assert seen == [emitted.type]
+
+
+def test_listener_registry_continues_delivery_then_raises_failures() -> None:
+    async def emit_event(dispatcher: EventDispatcher) -> None:
+        await EnvelopeEventEmitter(dispatcher=dispatcher).emit(
+            EventCreate(type=EventType.MESSAGE_RECEIVED, source=EventSource(name="test"))
+        )
+
+    seen: list[str] = []
+
+    async def first(event: EventEnvelope) -> None:
+        seen.append(f"first:{event.type.value}")
+
+    async def broken(event: EventEnvelope) -> None:
+        seen.append(f"broken:{event.type.value}")
+        raise RuntimeError("listener failed")
+
+    async def third(event: EventEnvelope) -> None:
+        seen.append(f"third:{event.type.value}")
+
+    registry = InProcessEventListenerRegistry()
+    registry.register(first)
+    registry.register(broken)
+    registry.register(third)
+
+    with pytest.raises(EventDeliveryError, match="1 event listener") as error_info:
+        asyncio.run(emit_event(registry))
+
+    assert seen == [
+        "first:message.received",
+        "broken:message.received",
+        "third:message.received",
+    ]
+    assert error_info.value.event.type is EventType.MESSAGE_RECEIVED
+    assert len(error_info.value.failures) == 1
+    assert error_info.value.failures[0].listener is broken
+    assert isinstance(error_info.value.failures[0].error, RuntimeError)
+
+
+def test_listener_registry_collects_multiple_listener_failures() -> None:
+    async def deliver_event(dispatcher: EventDispatcher) -> None:
+        event = EventEnvelope(type=EventType.WORKFLOW_FAILED, source=EventSource(name="test"))
+        await dispatcher.deliver(event)
+
+    async def first_broken(event: EventEnvelope) -> None:
+        raise RuntimeError(f"first failed for {event.type.value}")
+
+    async def second_broken(event: EventEnvelope) -> None:
+        raise ValueError(f"second failed for {event.type.value}")
+
+    registry = InProcessEventListenerRegistry()
+    registry.register(first_broken)
+    registry.register(second_broken)
+
+    with pytest.raises(EventDeliveryError, match="2 event listener") as error_info:
+        asyncio.run(deliver_event(registry))
+
+    assert [failure.listener for failure in error_info.value.failures] == [
+        first_broken,
+        second_broken,
+    ]
+    assert [type(failure.error) for failure in error_info.value.failures] == [
+        RuntimeError,
+        ValueError,
+    ]
