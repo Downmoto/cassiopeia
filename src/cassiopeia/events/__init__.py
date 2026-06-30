@@ -1,55 +1,12 @@
-"""Typed cassiopeia event APIs."""
+"""Typed cassiopeia event APIs.
 
-from cassiopeia.events.catalogue import EVENT_TYPE_CATALOGUE, EventTypeDefinition
-from cassiopeia.events.emitters import EnvelopeEventEmitter, EventEmitter
-from cassiopeia.events.listeners import (
-    EventDeliveryError,
-    EventDispatcher,
-    EventListener,
-    EventListenerFailure,
-    InProcessEventListenerRegistry,
-)
-from cassiopeia.events.models import (
-    EventCreate,
-    EventEnvelope,
-    EventPayload,
-    EventSource,
-    GatewayEventPayload,
-    MemoryEventPayload,
-    MessageEventPayload,
-    PermissionEventPayload,
-    SessionEventPayload,
-    SubagentEventPayload,
-    WorkflowEventPayload,
-    WorkspaceEventPayload,
-)
-from cassiopeia.events.sinks import EventSink, InMemoryEventSink
-from cassiopeia.events.types import EVENT_TYPE_PATTERN, EventType
+The events package owns the stable contract for lifecycle events emitted by
+cassiopeia feature packages. `EventType` is the canonical event name set.
+`EventCreate` is the caller-owned request shape, while `EventEnvelope` is the
+persisted shape produced by an emitter with generated identity and time.
 
-__all__ = [
-    "EVENT_TYPE_CATALOGUE",
-    "EVENT_TYPE_PATTERN",
-    "EnvelopeEventEmitter",
-    "EventCreate",
-    "EventDispatcher",
-    "EventDeliveryError",
-    "EventEmitter",
-    "EventEnvelope",
-    "EventListener",
-    "EventListenerFailure",
-    "EventPayload",
-    "EventSource",
-    "EventSink",
-    "EventType",
-    "EventTypeDefinition",
-    "GatewayEventPayload",
-    "InMemoryEventSink",
-    "InProcessEventListenerRegistry",
-    "MemoryEventPayload",
-    "MessageEventPayload",
-    "PermissionEventPayload",
-    "SessionEventPayload",
-    "SubagentEventPayload",
-    "WorkflowEventPayload",
-    "WorkspaceEventPayload",
-]
+Payload models only contain details that are not already expressed by the event
+type or envelope scope fields. Stored historical events should still load
+through the generic `EventPayload`, even when newer code uses a narrower
+family-specific payload model for write-time validation.
+"""

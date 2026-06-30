@@ -1,7 +1,7 @@
 """Event envelope and payload models."""
 
 from datetime import UTC, datetime
-from typing import Annotated, Any, Literal
+from typing import Annotated, Literal
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -30,87 +30,71 @@ class EventPayload(BaseModel):
 
     schema_name: NonEmptyString | None = None
     schema_version: Annotated[int, Field(ge=1)] = 1
-    data: dict[str, Any] = Field(default_factory=dict)
-
-    @classmethod
-    def from_stored(cls, value: Any) -> "EventPayload":
-        """Load stored payload data without requiring a known schema class."""
-
-        return cls.model_validate(value)
 
 
-class SessionEventPayload(EventPayload):
+class _TypedEventPayload(EventPayload):
+    """Base for write-time payload models with known fields."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+
+class SessionEventPayload(_TypedEventPayload):
     """Payload for session lifecycle events."""
 
-    session_id: NonEmptyString | None = None
-    workspace_id: NonEmptyString | None = None
-    persona_id: NonEmptyString | None = None
-    gateway_id: NonEmptyString | None = None
     reason: NonEmptyString | None = None
 
 
-class MessageEventPayload(EventPayload):
+class MessageEventPayload(_TypedEventPayload):
     """Payload for message lifecycle events."""
 
     message_id: NonEmptyString | None = None
-    direction: Literal["received", "sent"]
     text: str | None = None
-    attachments: tuple[dict[str, Any], ...] = ()
+    attachments: tuple[dict[str, object], ...] = ()
 
 
-class MemoryEventPayload(EventPayload):
+class MemoryEventPayload(_TypedEventPayload):
     """Payload for memory lifecycle events."""
 
     memory_id: NonEmptyString | None = None
     scope: Literal["session", "workspace", "persona", "user"]
-    action: Literal["created", "updated", "deleted", "rejected"]
-    tags: tuple[NonEmptyString, ...] = ()
 
 
-class PermissionEventPayload(EventPayload):
+class PermissionEventPayload(_TypedEventPayload):
     """Payload for permission lifecycle events."""
 
     request_id: NonEmptyString | None = None
     action: NonEmptyString
     ring: Annotated[int, Field(ge=0, le=3)]
-    decision: Literal["requested", "granted", "denied"]
 
 
-class WorkflowEventPayload(EventPayload):
+class WorkflowEventPayload(_TypedEventPayload):
     """Payload for workflow lifecycle events."""
 
     workflow_id: NonEmptyString | None = None
     run_id: NonEmptyString | None = None
-    status: Literal["started", "completed", "failed"]
     error: NonEmptyString | None = None
 
 
-class SubagentEventPayload(EventPayload):
+class SubagentEventPayload(_TypedEventPayload):
     """Payload for subagent lifecycle events."""
 
     subagent_id: NonEmptyString | None = None
     task_id: NonEmptyString | None = None
-    persona_id: NonEmptyString | None = None
-    status: Literal["created", "completed", "failed"]
     error: NonEmptyString | None = None
 
 
-class GatewayEventPayload(EventPayload):
+class GatewayEventPayload(_TypedEventPayload):
     """Payload for gateway lifecycle events."""
 
-    gateway_id: NonEmptyString | None = None
     gateway_type: NonEmptyString | None = None
-    status: Literal["connected", "disconnected", "error"]
     error: NonEmptyString | None = None
 
 
-class WorkspaceEventPayload(EventPayload):
+class WorkspaceEventPayload(_TypedEventPayload):
     """Payload for workspace lifecycle events."""
 
-    workspace_id: NonEmptyString | None = None
     slug: NonEmptyString | None = None
     root_path: NonEmptyString | None = None
-    action: Literal["created", "updated"]
 
 
 class EventEnvelope(BaseModel):
@@ -139,7 +123,10 @@ class EventEnvelope(BaseModel):
     gateway_id: NonEmptyString | None = None
     correlation_id: UUID | None = None
     causation_id: UUID | None = None
-    tags: tuple[NonEmptyString, ...] = ()
+    tags: tuple[NonEmptyString, ...] = Field(
+        default=(),
+        description="Optional labels for later hook filtering and debugging.",
+    )
     payload: EventPayload = Field(default_factory=EventPayload)
 
     @field_validator("created_at")
@@ -153,10 +140,9 @@ class EventEnvelope(BaseModel):
 class EventCreate(BaseModel):
     """Validated request to emit a new cassiopeia event.
 
-    Runtime code should construct this request and pass it to an `EventEmitter`.
-    The emitter owns envelope creation, including event id and timestamp
-    generation, so callers cannot accidentally pre-write persisted identity
-    fields.
+    Runtime code should construct this request and pass it to an emitter. The
+    emitter owns envelope creation, including event id and timestamp generation,
+    so callers cannot accidentally pre-write persisted identity fields.
     """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
@@ -169,5 +155,8 @@ class EventCreate(BaseModel):
     gateway_id: NonEmptyString | None = None
     correlation_id: UUID | None = None
     causation_id: UUID | None = None
-    tags: tuple[NonEmptyString, ...] = ()
+    tags: tuple[NonEmptyString, ...] = Field(
+        default=(),
+        description="Optional labels for later hook filtering and debugging.",
+    )
     payload: EventPayload = Field(default_factory=EventPayload)

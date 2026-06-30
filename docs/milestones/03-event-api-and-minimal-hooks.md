@@ -16,10 +16,10 @@ event-to-workflow dispatch to the later hooks milestone.
 
 ### In Scope
 
-- Typed event names and payload models for the 1.0 lifecycle event catalogue.
+- Typed event names and payload models for the 1.0 lifecycle event set.
 - A common event envelope with identity, timestamp, source, scope, correlation,
   causation, and payload metadata.
-- An emitter interface that application code can depend on without knowing the
+- An emitter implementation that application code can depend on without knowing the
   storage backend or hook registry implementation.
 - A persistence boundary that defines how emitted events are handed to the
   future storage layer.
@@ -42,11 +42,10 @@ event-to-workflow dispatch to the later hooks milestone.
 
 - Event model module, likely under `src/cassiopeia/events.py` or an
   `src/cassiopeia/events/` package if the implementation needs multiple files.
-- Event name catalogue covering the minimum 1.0 hook event types from the scope
-  document.
+- Event names covering the minimum 1.0 hook event types from the scope document.
 - Event envelope and payload types that use the project's existing Pydantic
   validation conventions.
-- Event emitter protocol or base class for runtime code to call.
+- Event emitter implementation for runtime code to call.
 - Minimal in-memory emitter/listener implementation for tests and early
   integration.
 - Repository or sink protocol that records the contract expected from the
@@ -57,7 +56,7 @@ event-to-workflow dispatch to the later hooks milestone.
 ## Tasks
 
 - [x] Define the canonical event type naming convention and map the minimum 1.0
-      hook event catalogue to it.
+      hook event set to it.
 - [x] Define the event envelope fields, including event id, type, timestamp,
       source, optional workspace/session/persona/gateway ids, correlation id,
       causation id, tags, and typed payload.
@@ -82,8 +81,8 @@ event-to-workflow dispatch to the later hooks milestone.
 
 - [x] Application code has a stable emitter API it can call from later
       milestones without importing storage or workflow internals.
-- [x] The minimum 1.0 lifecycle event catalogue is represented by typed event
-      names and payload models.
+- [x] The minimum 1.0 lifecycle event set is represented by typed event names
+      and payload models.
 - [x] Events can be created with consistent ids, timestamps, source metadata,
       scope metadata, and payload validation.
 - [x] Emitted events are passed to a storage boundary that can later be backed by
@@ -114,14 +113,14 @@ scripts/verify
 - Stored events load payloads through generic `EventPayload`; family-specific
   payload models are opt-in validation for write-time and feature-level logic,
   not a requirement for reading historical records.
-- The event API lives in the `cassiopeia.events` package. Public imports remain
-  available from `cassiopeia.events` while the implementation is split by
-  catalogue, models, emitters, sinks, listener registry, and type primitives.
+- The event API lives in the `cassiopeia.events` package, split by models,
+  emitters, sinks, listener registry, and type primitives. `EventType` is the
+  canonical event name set.
 - Async listener support should be included from the start.
 - The initial listener shell is for internal integration and tests only.
 - Listener failures do not prevent later in-process listeners from receiving the
-  same event. Failures are collected and raised as a single delivery error after
-  all registered listeners have been called.
+  same event. Failures are collected and raised as an `ExceptionGroup` after all
+  registered listeners have been called.
 - Full hook registry loading, filtering, ordering, blocking semantics, and
   workflow dispatch belong to the later hooks milestone.
 - The storage layer should receive events through a narrow append boundary

@@ -13,6 +13,7 @@ class EventSink(Protocol):
         ...
 
 
+# TODO: Remove this once the storage module provides a real event sink.
 class InMemoryEventSink:
     """In-memory event sink for tests and early internal integration."""
 

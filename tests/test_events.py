@@ -3,23 +3,14 @@ import asyncio
 import pytest
 from pydantic import ValidationError
 
-from cassiopeia.events import (
-    EVENT_TYPE_CATALOGUE,
-    EVENT_TYPE_PATTERN,
-    EnvelopeEventEmitter,
+from cassiopeia.events.emitters import EnvelopeEventEmitter
+from cassiopeia.events.listeners import EventListener, EventListenerRegistry
+from cassiopeia.events.models import (
     EventCreate,
-    EventDeliveryError,
-    EventDispatcher,
-    EventEmitter,
     EventEnvelope,
-    EventListener,
     EventPayload,
-    EventSink,
     EventSource,
-    EventType,
     GatewayEventPayload,
-    InMemoryEventSink,
-    InProcessEventListenerRegistry,
     MemoryEventPayload,
     MessageEventPayload,
     PermissionEventPayload,
@@ -28,27 +19,14 @@ from cassiopeia.events import (
     WorkflowEventPayload,
     WorkspaceEventPayload,
 )
+from cassiopeia.events.sinks import EventSink, InMemoryEventSink
+from cassiopeia.events.types import EventType
 
 
 def test_event_types_use_dot_format() -> None:
     for event_type in EventType:
-        assert EVENT_TYPE_PATTERN.fullmatch(event_type.value)
+        assert "." in event_type.value
         assert "_" not in event_type.value
-
-
-def test_event_catalogue_contains_each_event_type_once() -> None:
-    assert [definition.type for definition in EVENT_TYPE_CATALOGUE] == list(EventType)
-
-
-def test_event_catalogue_entries_are_immutable() -> None:
-    definition = EVENT_TYPE_CATALOGUE[0]
-
-    try:
-        definition.description = "changed"
-    except ValidationError as error:
-        assert "frozen" in str(error)
-    else:
-        raise AssertionError("event catalogue entries should be immutable")
 
 
 def test_event_envelope_uses_consistent_defaults() -> None:
@@ -82,17 +60,19 @@ def test_event_envelope_accepts_scope_correlation_tags_and_payload() -> None:
         correlation_id=parent.id,
         causation_id=parent.id,
         tags=("inbound", "telegram"),
-        payload=EventPayload(
-            schema_name="message.received",
-            schema_version=1,
-            data={"text": "hello"},
+        payload=EventPayload.model_validate(
+            {
+                "schema_name": "message.received",
+                "schema_version": 1,
+                "text": "hello",
+            }
         ),
     )
 
     assert child.correlation_id == parent.id
     assert child.causation_id == parent.id
     assert child.tags == ("inbound", "telegram")
-    assert child.payload.data == {"text": "hello"}
+    assert child.payload.model_extra == {"text": "hello"}
 
 
 def test_event_envelope_rejects_naive_timestamp() -> None:
@@ -123,19 +103,21 @@ def test_event_envelope_rejects_empty_scope_ids_and_tags() -> None:
 
 
 def test_generic_payload_loads_unknown_schema_names_and_future_versions() -> None:
-    payload = EventPayload.from_stored(
+    payload = EventPayload.model_validate(
         {
             "schema_name": "future.gateway.payload",
             "schema_version": 99,
-            "data": {"new_field": "kept"},
+            "new_field": "kept",
             "unknown_top_level": {"also": "kept"},
         }
     )
 
     assert payload.schema_name == "future.gateway.payload"
     assert payload.schema_version == 99
-    assert payload.data == {"new_field": "kept"}
-    assert payload.model_extra == {"unknown_top_level": {"also": "kept"}}
+    assert payload.model_extra == {
+        "new_field": "kept",
+        "unknown_top_level": {"also": "kept"},
+    }
 
 
 def test_event_envelope_loads_historical_payload_without_typed_family_validation() -> None:
@@ -147,41 +129,46 @@ def test_event_envelope_loads_historical_payload_without_typed_family_validation
             "payload": {
                 "schema_name": "message.received",
                 "schema_version": 1,
-                "data": {"legacy_direction": "inbound"},
+                "legacy_direction": "inbound",
             },
         }
     )
 
     assert event.payload.schema_name == "message.received"
-    assert event.payload.data == {"legacy_direction": "inbound"}
+    assert event.payload.model_extra == {"legacy_direction": "inbound"}
 
 
 def test_event_family_payloads_accept_minimum_valid_shapes() -> None:
     payloads = (
-        SessionEventPayload(session_id="session-1"),
-        MessageEventPayload(direction="received", message_id="message-1", text="hello"),
-        MemoryEventPayload(scope="workspace", action="created", memory_id="memory-1"),
-        PermissionEventPayload(action="shell.run", ring=1, decision="requested"),
-        WorkflowEventPayload(status="started", workflow_id="summarise-thread"),
-        SubagentEventPayload(status="created", subagent_id="worker-1"),
-        GatewayEventPayload(status="connected", gateway_id="telegram"),
-        WorkspaceEventPayload(action="created", workspace_id="workspace-1"),
+        SessionEventPayload(reason="closed by user"),
+        MessageEventPayload(message_id="message-1", text="hello"),
+        MemoryEventPayload(scope="workspace", memory_id="memory-1"),
+        PermissionEventPayload(action="shell.run", ring=1),
+        WorkflowEventPayload(workflow_id="summarise-thread"),
+        SubagentEventPayload(subagent_id="worker-1"),
+        GatewayEventPayload(gateway_type="telegram"),
+        WorkspaceEventPayload(slug="main"),
     )
 
     for payload in payloads:
         assert payload.schema_version == 1
-        assert payload.data == {}
+        assert not payload.model_extra
 
 
 def test_event_family_payloads_reject_invalid_lifecycle_values() -> None:
     with pytest.raises(ValidationError, match="Input should be"):
-        MessageEventPayload.model_validate({"direction": "inbound"})
+        MemoryEventPayload.model_validate({"scope": "global"})
+
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        MessageEventPayload.model_validate({"direction": "received"})
 
     with pytest.raises(ValidationError, match="less than or equal to 3"):
-        PermissionEventPayload(action="shell.run", ring=4, decision="requested")
+        PermissionEventPayload.model_validate(
+            {"action": "shell.run", "ring": 4, "decision": "requested"}
+        )
 
     with pytest.raises(ValidationError, match="String should have at least 1 character"):
-        WorkflowEventPayload(status="failed", error="")
+        WorkflowEventPayload.model_validate({"status": "failed", "error": ""})
 
 
 def test_event_create_rejects_persisted_identity_fields() -> None:
@@ -196,7 +183,7 @@ def test_event_create_rejects_persisted_identity_fields() -> None:
 
 
 def test_envelope_event_emitter_returns_validated_envelope() -> None:
-    async def emit_event(emitter: EventEmitter) -> EventEnvelope:
+    async def emit_event(emitter: EnvelopeEventEmitter) -> EventEnvelope:
         parent = EventEnvelope(type=EventType.SESSION_CREATED, source=EventSource(name="test"))
         return await emitter.emit(
             EventCreate(
@@ -209,7 +196,7 @@ def test_envelope_event_emitter_returns_validated_envelope() -> None:
                 correlation_id=parent.id,
                 causation_id=parent.id,
                 tags=("inbound",),
-                payload=MessageEventPayload(direction="received", text="hello"),
+                payload=MessageEventPayload(text="hello"),
             )
         )
 
@@ -224,7 +211,7 @@ def test_envelope_event_emitter_returns_validated_envelope() -> None:
     assert emitted.gateway_id == "gateway-1"
     assert emitted.correlation_id == emitted.causation_id
     assert emitted.tags == ("inbound",)
-    assert emitted.payload == MessageEventPayload(direction="received", text="hello")
+    assert emitted.payload == MessageEventPayload(text="hello")
 
 
 def test_envelope_event_emitter_appends_emitted_event_to_sink() -> None:
@@ -233,7 +220,7 @@ def test_envelope_event_emitter_appends_emitted_event_to_sink() -> None:
             EventCreate(
                 type=EventType.SESSION_CREATED,
                 source=EventSource(name="test"),
-                payload=SessionEventPayload(session_id="session-1"),
+                session_id="session-1",
             )
         )
 
@@ -241,11 +228,11 @@ def test_envelope_event_emitter_appends_emitted_event_to_sink() -> None:
     emitted = asyncio.run(emit_event(sink))
 
     assert sink.events == (emitted,)
-    assert sink.events[0].payload == SessionEventPayload(session_id="session-1")
+    assert sink.events[0].session_id == "session-1"
 
 
 def test_listener_registry_delivers_events_in_registration_order() -> None:
-    async def emit_event(dispatcher: EventDispatcher) -> EventEnvelope:
+    async def emit_event(dispatcher: EventListenerRegistry) -> EventEnvelope:
         return await EnvelopeEventEmitter(dispatcher=dispatcher).emit(
             EventCreate(type=EventType.MESSAGE_SENT, source=EventSource(name="test"))
         )
@@ -258,17 +245,16 @@ def test_listener_registry_delivers_events_in_registration_order() -> None:
     async def second(event: EventEnvelope) -> None:
         seen.append(f"second:{event.type.value}")
 
-    registry = InProcessEventListenerRegistry()
+    registry = EventListenerRegistry()
     registry.register(first)
     registry.register(second)
     emitted = asyncio.run(emit_event(registry))
 
-    assert registry.listeners == (first, second)
     assert seen == [f"first:{emitted.type.value}", f"second:{emitted.type.value}"]
 
 
-def test_listener_registry_supports_protocol_typed_listeners() -> None:
-    async def emit_event(dispatcher: EventDispatcher) -> EventEnvelope:
+def test_listener_registry_supports_typed_listeners() -> None:
+    async def emit_event(dispatcher: EventListenerRegistry) -> EventEnvelope:
         return await EnvelopeEventEmitter(dispatcher=dispatcher).emit(
             EventCreate(type=EventType.WORKSPACE_UPDATED, source=EventSource(name="test"))
         )
@@ -279,7 +265,7 @@ def test_listener_registry_supports_protocol_typed_listeners() -> None:
         seen.append(event.type)
 
     typed_listener: EventListener = listener
-    registry = InProcessEventListenerRegistry()
+    registry = EventListenerRegistry()
     registry.register(typed_listener)
     emitted = asyncio.run(emit_event(registry))
 
@@ -287,7 +273,7 @@ def test_listener_registry_supports_protocol_typed_listeners() -> None:
 
 
 def test_listener_registry_continues_delivery_then_raises_failures() -> None:
-    async def emit_event(dispatcher: EventDispatcher) -> None:
+    async def emit_event(dispatcher: EventListenerRegistry) -> None:
         await EnvelopeEventEmitter(dispatcher=dispatcher).emit(
             EventCreate(type=EventType.MESSAGE_RECEIVED, source=EventSource(name="test"))
         )
@@ -304,12 +290,12 @@ def test_listener_registry_continues_delivery_then_raises_failures() -> None:
     async def third(event: EventEnvelope) -> None:
         seen.append(f"third:{event.type.value}")
 
-    registry = InProcessEventListenerRegistry()
+    registry = EventListenerRegistry()
     registry.register(first)
     registry.register(broken)
     registry.register(third)
 
-    with pytest.raises(EventDeliveryError, match="1 event listener") as error_info:
+    with pytest.raises(ExceptionGroup, match="1 event listener") as error_info:
         asyncio.run(emit_event(registry))
 
     assert seen == [
@@ -317,14 +303,12 @@ def test_listener_registry_continues_delivery_then_raises_failures() -> None:
         "broken:message.received",
         "third:message.received",
     ]
-    assert error_info.value.event.type is EventType.MESSAGE_RECEIVED
-    assert len(error_info.value.failures) == 1
-    assert error_info.value.failures[0].listener is broken
-    assert isinstance(error_info.value.failures[0].error, RuntimeError)
+    assert len(error_info.value.exceptions) == 1
+    assert isinstance(error_info.value.exceptions[0], RuntimeError)
 
 
 def test_listener_registry_collects_multiple_listener_failures() -> None:
-    async def deliver_event(dispatcher: EventDispatcher) -> None:
+    async def deliver_event(dispatcher: EventListenerRegistry) -> None:
         event = EventEnvelope(type=EventType.WORKFLOW_FAILED, source=EventSource(name="test"))
         await dispatcher.deliver(event)
 
@@ -334,18 +318,14 @@ def test_listener_registry_collects_multiple_listener_failures() -> None:
     async def second_broken(event: EventEnvelope) -> None:
         raise ValueError(f"second failed for {event.type.value}")
 
-    registry = InProcessEventListenerRegistry()
+    registry = EventListenerRegistry()
     registry.register(first_broken)
     registry.register(second_broken)
 
-    with pytest.raises(EventDeliveryError, match="2 event listener") as error_info:
+    with pytest.raises(ExceptionGroup, match="2 event listener") as error_info:
         asyncio.run(deliver_event(registry))
 
-    assert [failure.listener for failure in error_info.value.failures] == [
-        first_broken,
-        second_broken,
-    ]
-    assert [type(failure.error) for failure in error_info.value.failures] == [
+    assert [type(error) for error in error_info.value.exceptions] == [
         RuntimeError,
         ValueError,
     ]

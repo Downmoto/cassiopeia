@@ -1,12 +1,10 @@
 """Event type primitives."""
 
-import re
 from enum import StrEnum
-from typing import Annotated, Final
+from typing import Annotated
 
 from pydantic import Field
 
-EVENT_TYPE_PATTERN: Final[re.Pattern[str]] = re.compile(r"^[a-z][a-z0-9]*(?:\.[a-z][a-z0-9]*)+$")
 NonEmptyString = Annotated[str, Field(min_length=1)]
 
 
