@@ -22,7 +22,7 @@ dependencies = [
 ]
 
 [project.scripts]
-cass = "cassiopeia.cli:main"
+cass = "cassiopeia.app:main"
 
 [tool.ruff]
 line-length = 100

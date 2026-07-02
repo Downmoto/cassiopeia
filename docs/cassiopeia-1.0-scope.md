@@ -95,10 +95,13 @@ The intended 1.0+ source layout and package ownership rules live in
    registration plumbing that later app logic can emit events as it is built.
    See `docs/milestones/03-event-api-and-minimal-hooks.md`.
 4. Core domain models: workspaces, personas, sessions, permissions, memories,
-   workflows, hooks, and remaining event-adjacent records as typed models.
-5. Storage layer: repository interfaces plus Turso/libSQL implementation.
+   workflows, hooks, and remaining event-adjacent records as typed models. See 
+   `docs/milestones/04-core-domain-models.md`
+5. Storage layer: repository interfaces plus Turso/libSQL implementation. See
+   `docs/milestones/05-storage-layer.md`.
 6. Provider layer: OpenAI, Ollama, embeddings, Pydantic AI integration,
-   structured output, and tool calling.
+   structured output, and tool calling. See
+   `docs/milestones/06-provider-layer.md`.
 7. Agent runtime: persona execution, context packet building, memory retrieval,
    history windowing/summarisation.
 8. Security rings: permission checks, grants, prompts, and audit records.

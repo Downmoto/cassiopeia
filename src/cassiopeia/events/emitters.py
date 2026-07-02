@@ -1,7 +1,7 @@
 """Event emitter interfaces and implementations."""
 
 from cassiopeia.events.listeners import EventListenerRegistry
-from cassiopeia.events.models import EventCreate, EventEnvelope
+from cassiopeia.events.models import EventEnvelope
 from cassiopeia.events.sinks import EventSink
 
 
@@ -21,7 +21,7 @@ class EnvelopeEventEmitter:
         self._sink = sink
         self._dispatcher = dispatcher
 
-    async def emit(self, event: EventCreate) -> EventEnvelope:
+    async def emit(self, event: EventEnvelope) -> EventEnvelope:
         """Return a new envelope for an already validated event request."""
 
         envelope = EventEnvelope(**event.model_dump(exclude={"payload"}), payload=event.payload)
