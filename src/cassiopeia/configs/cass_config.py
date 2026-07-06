@@ -9,7 +9,7 @@ from pydantic_settings import (
 )
 
 from cassiopeia.configs.events_config import EventsConfig
-from cassiopeia.shared import HOME_PATH
+from cassiopeia.shared import CONFIG_PATH
 
 
 class CassiopeiaSettings(BaseSettings):
@@ -22,10 +22,19 @@ class CassiopeiaSettings(BaseSettings):
         env_prefix="CASS_",
         env_file_encoding="utf-8",
         env_nested_delimiter="__",
-        yaml_file=HOME_PATH,
+        yaml_file=CONFIG_PATH,
         yaml_file_encoding="utf-8",
         extra="ignore",
     )
+
+    @classmethod
+    def defaults(cls) -> "CassiopeiaSettings":
+        return cls.model_construct(
+            **{
+                name: field.get_default(call_default_factory=True)
+                for name, field in cls.model_fields.items()
+            }
+        )
 
     @classmethod
     def settings_customise_sources(

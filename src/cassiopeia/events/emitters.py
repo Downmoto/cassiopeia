@@ -28,6 +28,7 @@ class EnvelopeEventEmitter:
 
         if not self.enabled:
             return None
+
         if self._sink is not None:
             await self._sink.append(event)
 

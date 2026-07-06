@@ -11,4 +11,6 @@ type AwareTimestamp = AwareDatetime
 type EntityId = NonEmptyString
 type ExternalId = NonEmptyString
 
-HOME_PATH: Final[Path] = Path.home() / ".cassiopeia/config.yaml"
+CONFIG_FILE: Final[str] = "config.yaml"
+HOME_PATH: Final[Path] = Path.home() / ".cassiopeia"
+CONFIG_PATH: Final[Path] = HOME_PATH / CONFIG_FILE
