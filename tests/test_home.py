@@ -12,7 +12,12 @@ def test_initialise_home_creates_config_file(tmp_path: Path) -> None:
 
     assert home == tmp_path / ".cassiopeia"
     assert (home / "config.yaml").read_text() == (
-        "events:\n  enabled: true\n  print_events: false\n"
+        "events:\n"
+        "  enabled: true\n"
+        "  print_events: false\n"
+        "provider:\n"
+        "  name: openai\n"
+        "  model_name: gpt-4.1-mini\n"
     )
 
 

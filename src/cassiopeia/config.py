@@ -4,13 +4,15 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Final
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, SecretStr
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
     SettingsConfigDict,
     YamlConfigSettingsSource,
 )
+
+from cassiopeia.provider import ProviderName
 
 HOME_PATH: Final = Path.home() / ".cassiopeia"
 CONFIG_FILE: Final = "config.yaml"
@@ -22,8 +24,27 @@ class EventsConfig(BaseModel):
     print_events: bool = False
 
 
+class ProviderConfig(BaseModel):
+    name: ProviderName = ProviderName.OPENAI
+    model_name: str = "gpt-4.1-mini"
+
+
+class KeysConfig(BaseModel):
+    openai_api_key: SecretStr | None = Field(
+        default=None,
+        validation_alias="OPENAI_API_KEY",
+        exclude=True,
+    )
+    google_api_key: SecretStr | None = Field(
+        default=None,
+        validation_alias="GOOGLE_API_KEY",
+        exclude=True,
+    )
+
 class CassiopeiaSettings(BaseSettings):
     events: EventsConfig = EventsConfig()
+    provider: ProviderConfig = ProviderConfig()
+    keys: KeysConfig = KeysConfig()
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -55,6 +76,7 @@ class CassiopeiaSettings(BaseSettings):
     ) -> tuple[PydanticBaseSettingsSource, ...]:
         return (
             env_settings,
+            dotenv_settings,
             YamlConfigSettingsSource(settings_cls),
             init_settings,
         )

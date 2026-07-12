@@ -1,7 +1,11 @@
+from pathlib import Path
+
+import pytest
 from pydantic import SecretStr
 from pydantic_ai.models.google import GoogleModel
 from pydantic_ai.models.openai import OpenAIResponsesModel
 
+from cassiopeia.config import CassiopeiaSettings
 from cassiopeia.provider import AIProvider, ProviderName
 
 
@@ -27,3 +31,52 @@ def test_provider_does_not_expose_api_key_in_repr() -> None:
     provider = AIProvider(ProviderName.OPENAI, SecretStr("secret-key"))
 
     assert "secret-key" not in repr(provider)
+
+
+def test_provider_uses_selected_key_from_settings() -> None:
+    settings = CassiopeiaSettings.model_validate(
+        {
+            "provider": {"name": "google"},
+            "GOOGLE_API_KEY": "google-key",
+        }
+    )
+
+    provider = AIProvider.from_settings(settings)
+
+    assert provider.name is ProviderName.GOOGLE
+    assert provider.api_key.get_secret_value() == "google-key"
+
+
+def test_provider_requires_key_for_selected_provider() -> None:
+    settings = CassiopeiaSettings.model_validate(
+        {"provider": {"name": "google"}}
+    )
+
+    with pytest.raises(ValueError, match="GOOGLE_API_KEY is required"):
+        AIProvider.from_settings(settings)
+
+
+def test_settings_exclude_api_keys_from_serialisation() -> None:
+    settings = CassiopeiaSettings.model_validate(
+        {"OPENAI_API_KEY": "secret-key"}
+    )
+
+    assert "openai_api_key" not in settings.model_dump()
+    assert "secret-key" not in settings.model_dump_json()
+
+
+def test_settings_load_provider_from_dotenv(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".env").write_text(
+        "GOOGLE_API_KEY=google-key\n"
+        "CASS_PROVIDER__NAME=google\n"
+        "CASS_PROVIDER__MODEL_NAME=gemini-2.5-flash\n"
+    )
+
+    settings = CassiopeiaSettings()
+
+    assert settings.provider.name is ProviderName.GOOGLE
+    assert settings.provider.model_name == "gemini-2.5-flash"
+    assert settings.google_api_key == SecretStr("google-key")
