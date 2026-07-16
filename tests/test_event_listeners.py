@@ -2,9 +2,9 @@ import asyncio
 
 import pytest
 
-from cassiopeia.events.listeners import EventListenerRegistry
-from cassiopeia.events.models import EventEnvelope, EventSource
-from cassiopeia.events.types import EventType
+from ethos.events.listeners import EventListenerRegistry
+from ethos.events.models import EventEnvelope, EventSource
+from ethos.events.types import EventType
 
 
 def test_listener_registry_delivers_events_in_registration_order() -> None:

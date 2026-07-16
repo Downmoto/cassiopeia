@@ -1,18 +1,18 @@
-"""Typed cassiopeia event APIs."""
+"""Typed ethos event APIs."""
 
 from pathlib import Path
 
-from cassiopeia.config import EventsConfig
-from cassiopeia.events.emitters import EnvelopeEventEmitter
-from cassiopeia.events.listeners import EventListenerRegistry
-from cassiopeia.events.models import (
+from ethos.config import EventsConfig
+from ethos.events.emitters import EnvelopeEventEmitter
+from ethos.events.listeners import EventListenerRegistry
+from ethos.events.models import (
     EventEnvelope,
     EventPayload,
     EventSource,
     NonEmptyString,
 )
-from cassiopeia.events.types import EventType
-from cassiopeia.storage import create_event_sink
+from ethos.events.types import EventType
+from ethos.storage import create_event_sink
 
 
 def event_factory(

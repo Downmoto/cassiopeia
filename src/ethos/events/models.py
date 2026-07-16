@@ -6,7 +6,7 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from cassiopeia.events.types import EventType
+from ethos.events.types import EventType
 
 type NonEmptyString = Annotated[str, Field(min_length=1)]
 
@@ -35,7 +35,7 @@ class EventPayload(BaseModel):
 
 
 class EventEnvelope(BaseModel):
-    """Common envelope for every cassiopeia lifecycle event."""
+    """Common envelope for every ethos lifecycle event."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 

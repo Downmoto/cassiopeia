@@ -4,10 +4,10 @@ from pathlib import Path
 
 import turso
 
-from cassiopeia.events.models import EventEnvelope, EventPayload, EventSource
-from cassiopeia.events.sinks import InMemoryEventSink
-from cassiopeia.events.types import EventType
-from cassiopeia.storage import StorageEventSink, initialise_database
+from ethos.events.models import EventEnvelope, EventPayload, EventSource
+from ethos.events.sinks import InMemoryEventSink
+from ethos.events.types import EventType
+from ethos.storage import StorageEventSink, initialise_database
 
 
 def test_in_memory_event_sink_preserves_append_order() -> None:

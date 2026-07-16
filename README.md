@@ -1,4 +1,4 @@
-# cassiopeia
+# ethos
 
 A general purpose agent harness for local workflow automation.
 
@@ -23,7 +23,7 @@ uv sync
 ## Usage
 
 ```sh
-uv run cass ask "hello"
+uv run ethos ask "hello"
 ```
 
 ## Checks

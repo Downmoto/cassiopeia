@@ -1,7 +1,7 @@
 [project]
-name = "cassiopeia"
+name = "ethos"
 version = "0.1.0"
-description = "Another ai harnessss"
+description = "Another ai harness"
 readme = "README.md"
 authors = [
     { name = "Arad Fadaei", email = "arad@fadaei.dev" }
@@ -20,7 +20,7 @@ dependencies = [
 ]
 
 [project.scripts]
-cass = "cassiopeia.app:main"
+ethos = "ethos.app:main"
 
 [tool.ruff]
 line-length = 80

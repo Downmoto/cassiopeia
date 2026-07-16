@@ -2,7 +2,7 @@
 
 from typing import Protocol
 
-from cassiopeia.events.models import EventEnvelope
+from ethos.events.models import EventEnvelope
 
 
 class EventSink(Protocol):

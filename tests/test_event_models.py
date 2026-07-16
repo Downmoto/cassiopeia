@@ -3,9 +3,9 @@ from datetime import UTC, datetime
 import pytest
 from pydantic import ValidationError
 
-from cassiopeia.events import event_factory
-from cassiopeia.events.models import EventEnvelope, EventPayload, EventSource
-from cassiopeia.events.types import EventType
+from ethos.events import event_factory
+from ethos.events.models import EventEnvelope, EventPayload, EventSource
+from ethos.events.types import EventType
 
 
 def test_event_factory_returns_correct_event_envelope() -> None:

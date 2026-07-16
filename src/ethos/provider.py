@@ -1,4 +1,4 @@
-"""Model providers supported by Cassiopeia."""
+"""Model providers supported by ethos."""
 
 from dataclasses import dataclass
 from enum import StrEnum
@@ -14,7 +14,7 @@ from pydantic_ai.providers.ollama import OllamaProvider
 from pydantic_ai.providers.openai import OpenAIProvider
 
 if TYPE_CHECKING:
-    from cassiopeia.config import CassiopeiaSettings
+    from ethos.config import EthosSettings
 
 
 class ProviderName(StrEnum):
@@ -32,10 +32,10 @@ class AIProvider:
     ollama_base_url: str = "http://localhost:11434/v1"
 
     @classmethod
-    def from_settings(cls, settings: "CassiopeiaSettings") -> "AIProvider":
+    def from_settings(cls, settings: "EthosSettings") -> "AIProvider":
         name = settings.provider.name
         if name is None:
-            raise ValueError("CASS_PROVIDER__NAME is required")
+            raise ValueError("ETHOS_PROVIDER__NAME is required")
 
         api_key = {
             ProviderName.OPENAI: settings.keys.openai_api_key,
@@ -43,7 +43,7 @@ class AIProvider:
             ProviderName.OLLAMA: settings.keys.ollama_api_key,
         }[name]
         if api_key is None and name is not ProviderName.OLLAMA:
-            variable = f"CASS_KEYS__{name.value.upper()}_API_KEY"
+            variable = f"ETHOS_KEYS__{name.value.upper()}_API_KEY"
             raise ValueError(f"{variable} is required")
         return cls(
             name,

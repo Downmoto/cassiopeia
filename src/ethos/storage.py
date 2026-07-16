@@ -10,7 +10,7 @@ import turso
 from turso import Connection
 
 if TYPE_CHECKING:
-    from cassiopeia.events.models import EventEnvelope
+    from ethos.events.models import EventEnvelope
 
 
 def initialise_database(db_path: Path) -> None:

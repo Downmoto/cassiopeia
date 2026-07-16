@@ -2,8 +2,8 @@
 
 from collections.abc import Awaitable, Callable
 
-from cassiopeia.events.models import EventEnvelope
-from cassiopeia.events.types import EventType
+from ethos.events.models import EventEnvelope
+from ethos.events.types import EventType
 
 type EventListener = Callable[[EventEnvelope], Awaitable[None]]
 

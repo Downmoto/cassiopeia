@@ -1,4 +1,4 @@
-"""Bootstrap the cassiopeia home directory layout."""
+"""Bootstrap the ethos home directory layout."""
 
 import shutil
 from collections.abc import Callable
@@ -7,10 +7,10 @@ from typing import Final, cast
 
 import yaml  # type: ignore[import-untyped]
 
-from cassiopeia.config import CONFIG_FILE, CassiopeiaSettings
-from cassiopeia.storage import initialise_database
+from ethos.config import CONFIG_FILE, EthosSettings
+from ethos.storage import initialise_database
 
-DB_PATH: Final = Path("data/cass.db")
+DB_PATH: Final = Path("data/ethos.db")
 DEFAULT_WORKSPACE_PATH: Final = Path("workspaces/default")
 WORKFLOWS_PATH: Final = Path("workflows")
 
@@ -20,7 +20,7 @@ def _dump_default_settings() -> str:
     return cast(
         str,
         yaml.safe_dump(
-            CassiopeiaSettings.defaults().model_dump(mode="json"),
+            EthosSettings.defaults().model_dump(mode="json"),
             sort_keys=False,
         ),
     )
@@ -38,19 +38,17 @@ _EMPTY_DIRS: Final[tuple[Path, ...]] = (
 
 
 def initialise_home(home: Path, reinitialise: bool = False) -> Path:
-    """Create a new cassiopeia home directory and starter definition files.
+    """Create a new ethos home directory and starter definition files.
 
     This is a bootstrap operation, not a repair or migration operation. Existing
     homes are rejected so user-authored files are never silently interpreted or
-    rewritten by `cass init`.
+    rewritten by `ethos init`.
     """
     resolved_home = home.expanduser()
 
     if resolved_home.exists():
         if not reinitialise:
-            raise FileExistsError(
-                f"cassiopeia home already exists: {resolved_home}"
-            )
+            raise FileExistsError(f"ethos home already exists: {resolved_home}")
         shutil.rmtree(resolved_home)
 
     resolved_home.mkdir(parents=True)

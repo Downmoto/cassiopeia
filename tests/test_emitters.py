@@ -1,14 +1,14 @@
 import asyncio
 from pathlib import Path
 
-from cassiopeia.config import EventsConfig
-from cassiopeia.events import create_event_emitter
-from cassiopeia.events.emitters import EnvelopeEventEmitter
-from cassiopeia.events.listeners import EventListenerRegistry
-from cassiopeia.events.models import EventEnvelope, EventSource
-from cassiopeia.events.sinks import InMemoryEventSink
-from cassiopeia.events.types import EventType
-from cassiopeia.storage import StorageEventSink
+from ethos.config import EventsConfig
+from ethos.events import create_event_emitter
+from ethos.events.emitters import EnvelopeEventEmitter
+from ethos.events.listeners import EventListenerRegistry
+from ethos.events.models import EventEnvelope, EventSource
+from ethos.events.sinks import InMemoryEventSink
+from ethos.events.types import EventType
+from ethos.storage import StorageEventSink
 
 
 def test_emitter_appends_event_to_sink() -> None:

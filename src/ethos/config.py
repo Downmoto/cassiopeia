@@ -1,4 +1,4 @@
-"""Cassiopeia paths and settings."""
+"""ethos paths and settings."""
 
 from functools import lru_cache
 from pathlib import Path
@@ -12,11 +12,11 @@ from pydantic_settings import (
     YamlConfigSettingsSource,
 )
 
-from cassiopeia.provider import ProviderName
+from ethos.provider import ProviderName
 
-HOME_PATH: Final = Path.home() / ".cassiopeia"
+HOME_PATH: Final = Path.home() / ".ethos"
 CONFIG_FILE: Final = "config.yaml"
-DB_PATH: Final = HOME_PATH / "data" / "cass.db"
+DB_PATH: Final = HOME_PATH / "data" / "ethos.db"
 
 
 class EventsConfig(BaseModel):
@@ -36,13 +36,13 @@ class KeysConfig(BaseModel):
     ollama_api_key: SecretStr | None = None
 
 
-class CassiopeiaSettings(BaseSettings):
+class EthosSettings(BaseSettings):
     events: EventsConfig = Field(default_factory=EventsConfig)
     provider: ProviderConfig = Field(default_factory=ProviderConfig)
     keys: KeysConfig = Field(default_factory=KeysConfig)
 
     model_config = SettingsConfigDict(
-        env_prefix="CASS_",
+        env_prefix="ETHOS_",
         env_nested_delimiter="__",
         yaml_file=HOME_PATH / CONFIG_FILE,
         yaml_file_encoding="utf-8",
@@ -50,7 +50,7 @@ class CassiopeiaSettings(BaseSettings):
     )
 
     @classmethod
-    def defaults(cls) -> "CassiopeiaSettings":
+    def defaults(cls) -> "EthosSettings":
         return cls.model_construct(
             **{
                 name: field.get_default(call_default_factory=True)
@@ -75,5 +75,5 @@ class CassiopeiaSettings(BaseSettings):
 
 
 @lru_cache
-def get_settings() -> CassiopeiaSettings:
-    return CassiopeiaSettings()
+def get_settings() -> EthosSettings:
+    return EthosSettings()

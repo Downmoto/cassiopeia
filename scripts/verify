@@ -55,7 +55,7 @@ run_step() {
   "$@"
 }
 
-printf '\ncassiopeia verification\n'
+printf '\nethos verification\n'
 
 if [ "$FIX" = true ]; then
   printf 'mode: fix\n'

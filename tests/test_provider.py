@@ -4,8 +4,8 @@ from pydantic_ai.models.google import GoogleModel
 from pydantic_ai.models.ollama import OllamaModel
 from pydantic_ai.models.openai import OpenAIResponsesModel
 
-from cassiopeia.config import CassiopeiaSettings
-from cassiopeia.provider import AIProvider, ProviderName
+from ethos.config import EthosSettings
+from ethos.provider import AIProvider, ProviderName
 
 
 def test_openai_provider_creates_responses_model() -> None:
@@ -42,7 +42,7 @@ def test_provider_does_not_expose_api_key_in_repr() -> None:
 
 
 def test_provider_uses_selected_key_from_settings() -> None:
-    settings = CassiopeiaSettings.model_validate(
+    settings = EthosSettings.model_validate(
         {
             "provider": {"name": "google"},
             "keys": {"google_api_key": "google-key"},
@@ -57,16 +57,14 @@ def test_provider_uses_selected_key_from_settings() -> None:
 
 
 def test_provider_requires_key_for_selected_provider() -> None:
-    settings = CassiopeiaSettings.model_validate(
-        {"provider": {"name": "google"}}
-    )
+    settings = EthosSettings.model_validate({"provider": {"name": "google"}})
 
     with pytest.raises(
-        ValueError, match="CASS_KEYS__GOOGLE_API_KEY is required"
+        ValueError, match="ETHOS_KEYS__GOOGLE_API_KEY is required"
     ):
         AIProvider.from_settings(settings)
 
 
 def test_provider_requires_selection() -> None:
-    with pytest.raises(ValueError, match="CASS_PROVIDER__NAME is required"):
-        AIProvider.from_settings(CassiopeiaSettings.defaults())
+    with pytest.raises(ValueError, match="ETHOS_PROVIDER__NAME is required"):
+        AIProvider.from_settings(EthosSettings.defaults())

@@ -1,8 +1,8 @@
 """Event emitter interfaces and implementations."""
 
-from cassiopeia.events.listeners import EventListenerRegistry
-from cassiopeia.events.models import EventEnvelope
-from cassiopeia.events.sinks import EventSink
+from ethos.events.listeners import EventListenerRegistry
+from ethos.events.models import EventEnvelope
+from ethos.events.sinks import EventSink
 
 
 class EnvelopeEventEmitter:

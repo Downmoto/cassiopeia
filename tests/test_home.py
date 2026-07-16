@@ -2,13 +2,13 @@ from pathlib import Path
 
 import pytest
 
-from cassiopeia.home import initialise_home
+from ethos.home import initialise_home
 
 
 def test_initialise_home_creates_config_file(tmp_path: Path) -> None:
-    home = initialise_home(tmp_path / ".cassiopeia")
+    home = initialise_home(tmp_path / ".ethos")
 
-    assert home == tmp_path / ".cassiopeia"
+    assert home == tmp_path / ".ethos"
     assert (home / "config.yaml").read_text() == (
         "events:\n"
         "  enabled: true\n"
@@ -25,15 +25,15 @@ def test_initialise_home_creates_config_file(tmp_path: Path) -> None:
 
 
 def test_initialise_home_creates_database(tmp_path: Path) -> None:
-    home = initialise_home(tmp_path / ".cassiopeia")
+    home = initialise_home(tmp_path / ".ethos")
 
-    db = home / "data" / "cass.db"
+    db = home / "data" / "ethos.db"
     assert db.exists()
     assert db.stat().st_size > 0
 
 
 def test_initialise_home_rejects_existing_home(tmp_path: Path) -> None:
-    home = tmp_path / ".cassiopeia"
+    home = tmp_path / ".ethos"
     home.mkdir()
 
     with pytest.raises(FileExistsError):
@@ -41,7 +41,7 @@ def test_initialise_home_rejects_existing_home(tmp_path: Path) -> None:
 
 
 def test_initialise_home_reinitialises_existing_home(tmp_path: Path) -> None:
-    home = tmp_path / ".cassiopeia"
+    home = tmp_path / ".ethos"
     home.mkdir()
     (home / "old.txt").write_text("remove me")
 
