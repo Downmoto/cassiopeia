@@ -73,7 +73,7 @@ fi
 
 run_step "Type check with mypy" uv run mypy
 run_step "Type check with pyright" uv run pyright
-run_step "Run tests" uv run pytest
+run_step "Run tests" uv run pytest -v
 
 printf '\n'
 printf 'All verification steps passed.\n'
