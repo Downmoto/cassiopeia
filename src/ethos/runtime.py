@@ -1,15 +1,29 @@
 """Single-turn ethos agent runtime."""
 
-import asyncio
+from collections.abc import AsyncIterator
+from copy import copy
+from dataclasses import dataclass
 
 from pydantic_ai import Agent
+from pydantic_ai.usage import RunUsage
 
 from ethos.config import EthosSettings, get_settings
 from ethos.provider import AIProvider
 
 
-def run_prompt(prompt: str, settings: EthosSettings | None = None) -> str:
-    """Run one prompt with the configured provider and model."""
+@dataclass(frozen=True)
+class PromptStreamEvent:
+    """Provider-neutral prompt text and usage update."""
+
+    text: str = ""
+    usage: RunUsage | None = None
+    done: bool = False
+
+
+async def run_prompt_singleton(
+    prompt: str, settings: EthosSettings | None = None
+) -> AsyncIterator[PromptStreamEvent]:
+    """Stream one prompt from the configured provider and model."""
     settings = settings or get_settings()
     if settings.provider.name is None:
         raise ValueError("ETHOS_PROVIDER__NAME is required")
@@ -19,4 +33,14 @@ def run_prompt(prompt: str, settings: EthosSettings | None = None) -> str:
     provider = AIProvider.from_settings(settings)
     model = provider.model(settings.provider.model_name)
 
-    return asyncio.run(Agent(model, output_type=str).run(prompt)).output
+    async with Agent(model, output_type=str).run_stream(prompt) as result:
+        async for chunk in result.stream_text(delta=True):
+            yield PromptStreamEvent(
+                text=chunk,
+                usage=copy(result.usage),
+            )
+
+        yield PromptStreamEvent(
+            usage=copy(result.usage),
+            done=True,
+        )

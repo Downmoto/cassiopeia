@@ -1,11 +1,29 @@
+import asyncio
+import logging
+from collections.abc import AsyncIterator
 from pathlib import Path
 
 import pytest
 import yaml  # type: ignore[import-untyped]
 from click.testing import CliRunner
+from pydantic_ai.usage import RunUsage
 
 from ethos import app
 from ethos.home import initialise_home
+from ethos.runtime import PromptStreamEvent
+
+
+def test_otel_detach_context_error_is_suppressed(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    logger = logging.getLogger("opentelemetry.context")
+
+    with caplog.at_level(logging.ERROR, logger=logger.name):
+        logger.error("Failed to detach context")
+        logger.error("another telemetry failure")
+
+    assert "Failed to detach context" not in caplog.text
+    assert "another telemetry failure" in caplog.text
 
 
 def test_init_command_initialises_default_home(
@@ -111,12 +129,114 @@ def test_ask_command_prints_model_output(
     home = tmp_path / ".ethos"
     home.mkdir()
     monkeypatch.setattr(app, "HOME_PATH", home)
-    monkeypatch.setattr(app, "run_prompt", lambda prompt: f"reply: {prompt}")
+
+    async def stream_prompt(prompt: str) -> AsyncIterator[PromptStreamEvent]:
+        yield PromptStreamEvent(text="reply: ")
+        yield PromptStreamEvent(text=prompt)
+        yield PromptStreamEvent(done=True)
+
+    monkeypatch.setattr(app, "run_prompt_singleton", stream_prompt)
 
     result = CliRunner().invoke(app.main, ["ask", "hello"])
 
     assert result.exit_code == 0
-    assert result.output == "reply: hello\n"
+    assert result.stdout == "reply: hello\n"
+    assert "Thinking · 0.0s" in result.stderr
+
+
+def test_ask_command_updates_thinking_time(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home = tmp_path / ".ethos"
+    home.mkdir()
+    monkeypatch.setattr(app, "HOME_PATH", home)
+
+    async def stream_prompt(
+        _prompt: str,
+    ) -> AsyncIterator[PromptStreamEvent]:
+        await asyncio.sleep(0.15)
+        yield PromptStreamEvent(text="reply")
+
+    monkeypatch.setattr(app, "run_prompt_singleton", stream_prompt)
+
+    result = CliRunner().invoke(app.main, ["ask", "hello"])
+
+    assert result.exit_code == 0
+    assert "Thinking · 0.0s" in result.stderr
+    assert "Thinking · 0.1s" in result.stderr
+
+
+def test_ask_command_writes_model_output_to_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home = tmp_path / ".ethos"
+    home.mkdir()
+    output_path = tmp_path / "response.md"
+    monkeypatch.setattr(app, "HOME_PATH", home)
+
+    async def stream_prompt(_prompt: str) -> AsyncIterator[PromptStreamEvent]:
+        yield PromptStreamEvent(text="streamed ")
+        yield PromptStreamEvent(text="response")
+        yield PromptStreamEvent(
+            usage=RunUsage(input_tokens=10, output_tokens=2),
+            done=True,
+        )
+
+    monkeypatch.setattr(app, "run_prompt_singleton", stream_prompt)
+
+    result = CliRunner().invoke(
+        app.main, ["ask", "hello", "--to", str(output_path)]
+    )
+
+    assert result.exit_code == 0
+    assert output_path.read_text() == "streamed response"
+    assert "streamed response" not in result.output
+    assert "10 input + 2 output = 12 tokens" in result.stderr
+
+
+def test_ask_command_retains_partial_file_on_stream_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home = tmp_path / ".ethos"
+    home.mkdir()
+    output_path = tmp_path / "response.md"
+    monkeypatch.setattr(app, "HOME_PATH", home)
+
+    async def fail(_prompt: str) -> AsyncIterator[PromptStreamEvent]:
+        yield PromptStreamEvent(text="partial response")
+        raise ValueError("model context window exceeded")
+
+    monkeypatch.setattr(app, "run_prompt_singleton", fail)
+
+    result = CliRunner().invoke(
+        app.main, ["ask", "hello", "--to", str(output_path)]
+    )
+
+    assert result.exit_code == 1
+    assert output_path.read_text() == "partial response"
+    assert "Error: model context window exceeded" in result.output
+    assert f"Output retained at: {output_path}" in result.output
+    assert "Traceback" not in result.output
+
+
+def test_ask_command_does_not_overwrite_existing_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home = tmp_path / ".ethos"
+    home.mkdir()
+    output_path = tmp_path / "response.md"
+    output_path.write_text("keep me")
+    monkeypatch.setattr(app, "HOME_PATH", home)
+
+    result = CliRunner().invoke(
+        app.main, ["ask", "hello", "--to", str(output_path)]
+    )
+
+    assert result.exit_code == 1
+    assert output_path.read_text() == "keep me"
+    assert (
+        result.output == f"Error: output file already exists: {output_path}\n"
+    )
 
 
 def test_ask_command_reports_runtime_error(
@@ -126,15 +246,16 @@ def test_ask_command_reports_runtime_error(
     home.mkdir()
     monkeypatch.setattr(app, "HOME_PATH", home)
 
-    def fail(_prompt: str) -> str:
+    async def fail(_prompt: str) -> AsyncIterator[PromptStreamEvent]:
         raise ValueError("ETHOS_KEYS__OPENAI_API_KEY is required")
+        yield  # required for return type, runtime error without
 
-    monkeypatch.setattr(app, "run_prompt", fail)
+    monkeypatch.setattr(app, "run_prompt_singleton", fail)
 
     result = CliRunner().invoke(app.main, ["ask", "hello"])
 
     assert result.exit_code == 1
-    assert result.output == "Error: ETHOS_KEYS__OPENAI_API_KEY is required\n"
+    assert "Error: ETHOS_KEYS__OPENAI_API_KEY is required" in result.stderr
     assert "Traceback" not in result.output
 
 

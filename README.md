@@ -24,7 +24,11 @@ uv sync
 
 ```sh
 uv run ethos ask "hello"
+uv run ethos ask "write a report" --to report.md
 ```
+
+File output is streamed incrementally and includes a token tracker on stderr.
+Existing output files are never overwritten.
 
 ## Checks
 

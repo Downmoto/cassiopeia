@@ -1,9 +1,11 @@
+import asyncio
+
 import pytest
 from pydantic_ai.models.test import TestModel
 
 from ethos.config import EthosSettings
 from ethos.provider import AIProvider
-from ethos.runtime import run_prompt
+from ethos.runtime import PromptStreamEvent, run_prompt_singleton
 
 
 def test_run_prompt_returns_model_output(
@@ -18,16 +20,30 @@ def test_run_prompt_returns_model_output(
     monkeypatch.setattr(
         AIProvider,
         "model",
-        lambda _provider, _model_name: TestModel(
+        lambda _provider, _model_name: TestModel(  # pyright: ignore
             custom_output_text="hello from ethos"
-        ),
+        ),  # pyright: ignore[reportUnknownArgumentType, reportUnknownLambdaType]
     )
 
-    output = run_prompt("hello", settings)
+    async def collect_events() -> list[PromptStreamEvent]:
+        return [
+            event
+            async for event in run_prompt_singleton("hello", settings)
+        ]
 
-    assert output == "hello from ethos"
+    events = asyncio.run(collect_events())
+
+    assert "".join(event.text for event in events) == "hello from ethos"
+    assert events[-1].done
+    assert events[-1].usage is not None
+    assert events[-1].usage.output_tokens > 0
 
 
 def test_run_prompt_requires_provider_selection() -> None:
+    async def collect_output() -> None:
+        settings = EthosSettings.defaults()
+        async for _chunk in run_prompt_singleton("hello", settings):
+            pass
+
     with pytest.raises(ValueError, match="ETHOS_PROVIDER__NAME is required"):
-        run_prompt("hello", EthosSettings.defaults())
+        asyncio.run(collect_output())
