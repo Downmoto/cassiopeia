@@ -4,7 +4,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Final, Self
 
-from pydantic import BaseModel, Field, SecretStr, model_validator
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -20,17 +20,23 @@ DB_PATH: Final = HOME_PATH / "data" / "ethos.db"
 
 
 class EventsConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     enabled: bool = True
     print_events: bool = False
 
 
 class ProviderConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     name: ProviderName
     model_name: str
     ollama_base_url: str = "http://localhost:11434/v1"
 
 
 class KeysConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     openai_api_key: SecretStr | None = None
     google_api_key: SecretStr | None = None
     ollama_api_key: SecretStr | None = None
@@ -46,7 +52,7 @@ class EthosSettings(BaseSettings):
         env_nested_delimiter="__",
         yaml_file=HOME_PATH / CONFIG_FILE,
         yaml_file_encoding="utf-8",
-        extra="ignore",
+        extra="forbid",
     )
 
     @model_validator(mode="after")

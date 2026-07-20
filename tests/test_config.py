@@ -82,3 +82,24 @@ def test_settings_allow_ollama_without_api_key() -> None:
     )
 
     assert settings.keys.ollama_api_key is None
+
+
+@pytest.mark.parametrize(
+    "settings",
+    [
+        {
+            "provider": {"name": "ollama", "model_name": "llama3.2"},
+            "unknown": True,
+        },
+        {
+            "provider": {
+                "name": "ollama",
+                "model_name": "llama3.2",
+                "unknown": True,
+            }
+        },
+    ],
+)
+def test_settings_reject_unknown_fields(settings: dict[str, object]) -> None:
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        EthosSettings.model_validate(settings)

@@ -18,6 +18,8 @@ A general purpose agent harness for local workflow automation.
 
 ```sh
 uv sync
+uv run ethos init
+uv run ethos onboard
 ```
 
 ## Usage
@@ -33,5 +35,5 @@ Existing output files are never overwritten.
 ## Checks
 
 ```sh
-scripts/verify
+scripts/verify.sh
 ```

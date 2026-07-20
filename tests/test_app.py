@@ -9,6 +9,7 @@ from click.testing import CliRunner
 from pydantic_ai.usage import RunUsage
 
 from ethos import app
+from ethos.config import EthosSettings, ProviderConfig
 from ethos.home import initialise_home
 from ethos.runtime import PromptStreamEvent
 
@@ -257,6 +258,51 @@ def test_ask_command_reports_runtime_error(
     assert result.exit_code == 1
     assert "Error: ETHOS_KEYS__OPENAI_API_KEY is required" in result.stderr
     assert "Traceback" not in result.output
+
+
+def test_ask_command_requires_onboarding(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home = tmp_path / ".ethos"
+    home.mkdir()
+    monkeypatch.setattr(app, "HOME_PATH", home)
+
+    async def fail(_prompt: str) -> AsyncIterator[PromptStreamEvent]:
+        EthosSettings.model_validate(
+            {"provider": {"name": None, "model_name": None}}
+        )
+        yield PromptStreamEvent()
+
+    monkeypatch.setattr(app, "run_prompt_singleton", fail)
+
+    result = CliRunner().invoke(app.main, ["ask", "hello"])
+
+    assert result.exit_code == 1
+    assert (
+        "Error: ethos is not configured. Run [ethos onboard] first."
+        in result.output
+    )
+    assert "Traceback" not in result.output
+
+
+def test_ask_command_preserves_other_validation_errors(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home = tmp_path / ".ethos"
+    home.mkdir()
+    monkeypatch.setattr(app, "HOME_PATH", home)
+
+    async def fail(_prompt: str) -> AsyncIterator[PromptStreamEvent]:
+        ProviderConfig.model_validate({})
+        yield PromptStreamEvent()
+
+    monkeypatch.setattr(app, "run_prompt_singleton", fail)
+
+    result = CliRunner().invoke(app.main, ["ask", "hello"])
+
+    assert result.exit_code == 1
+    assert "validation errors for ProviderConfig" in result.output
+    assert "Run [ethos onboard]" not in result.output
 
 
 def test_ask_command_requires_initialised_home(

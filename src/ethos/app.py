@@ -9,8 +9,9 @@ from pathlib import Path
 from time import monotonic
 
 import click
+from pydantic import ValidationError
 
-from ethos.config import HOME_PATH
+from ethos.config import HOME_PATH, EthosSettings
 from ethos.home import initialise_home
 from ethos.onboarding import run_onboarding
 from ethos.runtime import PromptStreamEvent, run_prompt_singleton
@@ -238,6 +239,13 @@ def ask(prompt: str, output_path: Path | None) -> None:
         raise click.ClickException(
             f"output file already exists: {output_path}"
         ) from error
+    except ValidationError as error:
+        message = (
+            "ethos is not configured. Run [ethos onboard] first."
+            if error.title == EthosSettings.__name__
+            else str(error)
+        )
+        raise click.ClickException(message) from error
     except Exception as error:
         retained = (
             f"\nOutput retained at: {output_path}"

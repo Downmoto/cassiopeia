@@ -43,7 +43,8 @@ def initialise_home(home: Path, reinitialise: bool = False) -> Path:
             raise FileExistsError(f"ethos home already exists: {resolved_home}")
         shutil.rmtree(resolved_home)
 
-    resolved_home.mkdir(parents=True)
+    resolved_home.mkdir(parents=True, mode=0o700)
+    resolved_home.chmod(0o700)
 
     for directory in _EMPTY_DIRS:
         (resolved_home / directory).mkdir(parents=True)
@@ -52,6 +53,7 @@ def initialise_home(home: Path, reinitialise: bool = False) -> Path:
         target = resolved_home / file
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(contents())
+        target.chmod(0o600)
 
     Storage(resolved_home / DB_PATH).close()
 
