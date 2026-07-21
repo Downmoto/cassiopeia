@@ -12,6 +12,7 @@ WORKSPACE_META_DIR: Final = ".ethos_workspace"
 WORKSPACE_CONFIG_FILE: Final = "ws_config.yaml"
 TOOLS_CONFIG_FILE: Final = "tools.yaml"
 SKILLS_CONFIG_FILE: Final = "skills.yaml"
+SESSIONS_DIR: Final = "sessions"
 
 _WORKSPACE_FILES: Final = {
     WORKSPACE_CONFIG_FILE: "{}\n",
@@ -57,6 +58,10 @@ class Workspace:
     def skills_config_path(self) -> Path:
         return self.ethos_path / SKILLS_CONFIG_FILE
 
+    @property
+    def sessions_path(self) -> Path:
+        return self.ethos_path / SESSIONS_DIR
+
 
 class WorkspaceManager:
     """Create and discover workspaces beneath one injected root."""
@@ -92,6 +97,7 @@ class WorkspaceManager:
         required_paths = (
             workspace.ethos_path,
             *(workspace.ethos_path / name for name in _WORKSPACE_FILES),
+            workspace.sessions_path,
         )
         symlinks = [path.name for path in required_paths if path.is_symlink()]
         if symlinks:
@@ -103,7 +109,7 @@ class WorkspaceManager:
             for path in required_paths
             if not (
                 path.is_dir()
-                if path == workspace.ethos_path
+                if path in (workspace.ethos_path, workspace.sessions_path)
                 else path.is_file()
             )
         ]
@@ -146,6 +152,7 @@ class WorkspaceManager:
         try:
             ethos_path = path / WORKSPACE_META_DIR
             ethos_path.mkdir(mode=0o700)
+            (ethos_path / SESSIONS_DIR).mkdir(mode=0o700)
             for filename, contents in _WORKSPACE_FILES.items():
                 file = ethos_path / filename
                 file.write_text(contents, encoding="utf-8")

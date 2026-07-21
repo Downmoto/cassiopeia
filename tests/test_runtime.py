@@ -1,5 +1,6 @@
 import asyncio
 from collections.abc import AsyncIterator
+from pathlib import Path
 
 import pytest
 from pydantic_ai.messages import ModelMessage, ModelRequest, UserPromptPart
@@ -9,6 +10,8 @@ from pydantic_ai.models.test import TestModel
 from ethos.config import EthosSettings
 from ethos.provider import AIProvider
 from ethos.runtime import AgentRuntime, PromptStreamEvent, run_prompt_singleton
+from ethos.sessions import SessionManager
+from ethos.workspaces import WorkspaceManager
 
 
 def settings() -> EthosSettings:
@@ -45,6 +48,7 @@ def test_run_prompt_returns_model_output(
 
 
 def test_runtime_keeps_conversation_history_isolated(
+    tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     requests: list[list[ModelMessage]] = []
@@ -62,15 +66,35 @@ def test_runtime_keeps_conversation_history_isolated(
             stream_function=respond
         ),  # pyright: ignore[reportUnknownArgumentType, reportUnknownLambdaType]
     )
-    runtime = AgentRuntime(settings())
+    workspace_root = tmp_path / "workspaces"
+    workspaces = WorkspaceManager(workspace_root)
+    workspaces.create("my-project")
+    sessions = SessionManager(workspaces)
+    first = sessions.create("my-project")
+    second = sessions.create("my-project")
 
     async def run_turns() -> None:
-        for prompt, conversation_id in (
-            ("first", "one"),
-            ("second", "one"),
-            ("separate", "two"),
-        ):
-            _ = [event async for event in runtime.run(prompt, conversation_id)]
+        runtime = AgentRuntime(sessions, settings())
+        _ = [
+            event
+            async for event in runtime.run("first", "my-project", str(first.id))
+        ]
+
+        restarted = AgentRuntime(
+            SessionManager(WorkspaceManager(workspace_root)), settings()
+        )
+        _ = [
+            event
+            async for event in restarted.run(
+                "second", "my-project", str(first.id)
+            )
+        ]
+        _ = [
+            event
+            async for event in restarted.run(
+                "separate", "my-project", str(second.id)
+            )
+        ]
 
     asyncio.run(run_turns())
 
@@ -86,6 +110,7 @@ def test_runtime_keeps_conversation_history_isolated(
 
 
 def test_runtime_serialises_each_conversation(
+    tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     active = 0
@@ -108,18 +133,53 @@ def test_runtime_serialises_each_conversation(
             stream_function=respond
         ),  # pyright: ignore[reportUnknownArgumentType, reportUnknownLambdaType]
     )
-    runtime = AgentRuntime(settings())
+    workspaces = WorkspaceManager(tmp_path / "workspaces")
+    workspaces.create("my-project")
+    sessions = SessionManager(workspaces)
+    first = sessions.create("my-project")
+    second = sessions.create("my-project")
+    runtime = AgentRuntime(sessions, settings())
 
-    async def collect(conversation_id: str) -> None:
-        _ = [event async for event in runtime.run("hello", conversation_id)]
+    async def collect(session_id: str) -> None:
+        _ = [
+            event
+            async for event in runtime.run("hello", "my-project", session_id)
+        ]
 
     async def run_concurrently() -> None:
         nonlocal most_active
-        await asyncio.gather(collect("same"), collect("same"))
+        await asyncio.gather(collect(str(first.id)), collect(str(first.id)))
         assert most_active == 1
 
         most_active = 0
-        await asyncio.gather(collect("one"), collect("two"))
+        await asyncio.gather(collect(str(first.id)), collect(str(second.id)))
         assert most_active == 2
 
     asyncio.run(run_concurrently())
+
+
+def test_runtime_rejects_archived_session(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        AIProvider,
+        "model",
+        lambda _provider, _model_name: TestModel(),  # pyright: ignore
+    )
+    workspaces = WorkspaceManager(tmp_path / "workspaces")
+    workspaces.create("my-project")
+    sessions = SessionManager(workspaces)
+    session = sessions.create("my-project")
+    sessions.archive("my-project", str(session.id))
+    runtime = AgentRuntime(sessions, settings())
+
+    async def collect() -> None:
+        _ = [
+            event
+            async for event in runtime.run(
+                "hello", "my-project", str(session.id)
+            )
+        ]
+
+    with pytest.raises(ValueError, match=f"session is archived: {session.id}"):
+        asyncio.run(collect())

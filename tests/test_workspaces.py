@@ -19,6 +19,7 @@ def test_create_workspace_builds_self_contained_layout(
         "tools: {}\ntoolsets: {}\n"
     )
     assert workspace.skills_config_path.read_text() == "skills: []\n"
+    assert workspace.sessions_path.is_dir()
     assert not (workspace.ethos_path / "tools").exists()
     assert not (workspace.ethos_path / "skills").exists()
     assert not (workspace.ethos_path / "memory").exists()
@@ -30,6 +31,7 @@ def test_create_workspace_builds_self_contained_layout(
     assert S_IMODE(workspace.config_path.stat().st_mode) == 0o600
     assert S_IMODE(workspace.tools_config_path.stat().st_mode) == 0o600
     assert S_IMODE(workspace.skills_config_path.stat().st_mode) == 0o600
+    assert S_IMODE(workspace.sessions_path.stat().st_mode) == 0o700
 
 
 def test_workspace_root_allows_user_defined_structure(tmp_path: Path) -> None:
