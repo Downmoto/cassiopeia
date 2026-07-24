@@ -5,10 +5,17 @@ from dataclasses import dataclass, field
 from typing import Any, cast
 
 import discord
+import pytest
 from discord import app_commands
 from pydantic import JsonValue, SecretStr
 
-from ethos.commands import CommandRequest, CommandResponse
+from ethos.commands import (
+    CommandDispatcher,
+    CommandRequest,
+    CommandResponse,
+    CommandSourceError,
+    UnknownCommandError,
+)
 from ethos.config import DiscordConfig
 from ethos.gateways.discord import (
     DiscordGateway,
@@ -42,6 +49,11 @@ class FakeUser:
 
 
 @dataclass
+class FakePermissions:
+    manage_channels: bool = True
+
+
+@dataclass
 class FakeResponse:
     deferred: bool = False
     sent: list[tuple[str, bool]] = field(default_factory=list)
@@ -66,8 +78,48 @@ class FakeInteraction:
     channel_id: int = 20
     guild_id: int | None = 40
     user: FakeUser = field(default_factory=FakeUser)
+    permissions: FakePermissions = field(default_factory=FakePermissions)
     response: FakeResponse = field(default_factory=FakeResponse)
     followup: FakeFollowup = field(default_factory=FakeFollowup)
+
+
+@dataclass
+class FakeGuildPermissions:
+    manage_channels: bool = True
+
+
+@dataclass
+class FakeMember:
+    guild_permissions: FakeGuildPermissions = field(
+        default_factory=FakeGuildPermissions
+    )
+
+
+@dataclass
+class FakeCreatedChannel:
+    id: int = 50
+    name: str = "updates"
+
+
+@dataclass
+class FakeDiscordGuild:
+    id: int = 40
+    me: FakeMember | None = field(default_factory=FakeMember)
+    created: list[tuple[str, str | None]] = field(default_factory=list)
+
+    async def create_text_channel(
+        self, name: str, *, reason: str | None = None
+    ) -> FakeCreatedChannel:
+        self.created.append((name, reason))
+        return FakeCreatedChannel(name=name)
+
+
+@dataclass
+class FakeDiscordClient:
+    guild: FakeDiscordGuild
+
+    def get_guild(self, guild_id: int) -> FakeDiscordGuild | None:
+        return self.guild if guild_id == self.guild.id else None
 
 
 @dataclass
@@ -95,6 +147,7 @@ def test_discord_registers_universal_slash_commands() -> None:
     assert not client.intents.message_content
     assert {command.name for command in client.tree.get_commands()} == {
         "chat",
+        "channel-create",
         "session-archive",
         "session-create",
         "session-list",
@@ -132,7 +185,11 @@ def test_discord_slash_command_translates_interaction() -> None:
             arguments={"name": "my-project"},
             source="discord",
             owner_id="10",
-            external_context={"channel_id": "20", "guild_id": "40"},
+            external_context={
+                "channel_id": "20",
+                "guild_id": "40",
+                "user_can_manage_channels": "true",
+            },
         )
     ]
     assert fake_interaction.response.deferred
@@ -256,3 +313,78 @@ def test_discord_splits_responses_at_message_limit() -> None:
 
     assert tuple(map(len, chunks)) == (2_000, 2_000, 1)
     assert "".join(chunks) == "x" * 4_001
+
+
+def channel_request(
+    *, source: str = "discord", user_can_manage: bool = True
+) -> CommandRequest:
+    return CommandRequest(
+        name="discord.channel.create",
+        arguments={"name": "updates"},
+        source=source,
+        owner_id="10",
+        external_context={
+            "guild_id": "40",
+            "user_can_manage_channels": str(user_can_manage).lower(),
+        },
+    )
+
+
+def test_discord_channel_command_is_active_and_source_restricted() -> None:
+    dispatcher = CommandDispatcher()
+
+    async def execute(request: CommandRequest) -> list[CommandResponse]:
+        return [response async for response in dispatcher.execute(request)]
+
+    with pytest.raises(UnknownCommandError):
+        asyncio.run(execute(channel_request()))
+
+    gateway = DiscordGateway(
+        DiscordConfig(
+            token=SecretStr("secret"), allowed_user_ids=frozenset({10})
+        )
+    )
+    guild = FakeDiscordGuild()
+    gateway.register_commands(dispatcher)
+    gateway_client = cast(discord.Client, FakeDiscordClient(guild))
+    gateway._client = gateway_client  # pyright: ignore[reportPrivateUsage]
+
+    responses = asyncio.run(execute(channel_request()))
+
+    assert responses[0].text == "channel created: updates"
+    assert responses[0].data == {
+        "channel": {"id": "50", "name": "updates", "guild_id": "40"}
+    }
+    assert guild.created == [("updates", "Ethos request from Discord user 10")]
+
+    for source in ("cli", "vox"):
+        with pytest.raises(
+            CommandSourceError,
+            match=f"cannot be invoked from {source}",
+        ):
+            asyncio.run(execute(channel_request(source=source)))
+
+
+def test_discord_channel_command_enforces_permissions() -> None:
+    dispatcher = CommandDispatcher()
+    gateway = DiscordGateway(
+        DiscordConfig(
+            token=SecretStr("secret"), allowed_user_ids=frozenset({10})
+        )
+    )
+    gateway.register_commands(dispatcher)
+
+    async def execute(request: CommandRequest) -> list[CommandResponse]:
+        return [response async for response in dispatcher.execute(request)]
+
+    with pytest.raises(ValueError, match="you need Manage Channels"):
+        asyncio.run(execute(channel_request(user_can_manage=False)))
+
+    guild = FakeDiscordGuild(
+        me=FakeMember(FakeGuildPermissions(manage_channels=False))
+    )
+    gateway_client = cast(discord.Client, FakeDiscordClient(guild))
+    gateway._client = gateway_client  # pyright: ignore[reportPrivateUsage]
+
+    with pytest.raises(ValueError, match="Ethos needs Manage Channels"):
+        asyncio.run(execute(channel_request()))

@@ -319,6 +319,8 @@ async def _start_gateways(gateways: tuple[Gateway, ...]) -> None:
     storage = Storage(HOME_PATH / HOME_DB_PATH)
     try:
         dispatcher = _build_dispatcher(storage)
+        for gateway in gateways:
+            gateway.register_commands(dispatcher)
         await GatewaySupervisor(HOME_PATH, gateways).run(dispatcher.execute)
     finally:
         storage.close()

@@ -3,19 +3,26 @@
 # pyright: reportUnusedFunction=false
 import asyncio
 from collections import defaultdict
+from collections.abc import AsyncIterator
 from typing import Final
 
 import discord
 from discord import app_commands
-from pydantic import JsonValue
+from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
-from ethos.commands import CommandRequest, CommandResponse
+from ethos.commands import CommandDispatcher, CommandRequest, CommandResponse
 from ethos.config import DiscordConfig
 from ethos.gateways.base import CommandExecutor, Gateway
 from ethos.workspaces import DEFAULT_WORKSPACE
 
 _SOURCE: Final = "discord"
 _MESSAGE_LIMIT: Final = 2_000
+
+
+class _ChannelArguments(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=100)
 
 
 def _chunks(text: str) -> tuple[str, ...]:
@@ -53,12 +60,15 @@ class _DiscordClient(discord.Client):
         channel_id: int,
         guild_id: int | None,
         message_id: int | None = None,
+        extra_context: dict[str, str] | None = None,
     ) -> CommandRequest:
         context = {"channel_id": str(channel_id)}
         if guild_id is not None:
             context["guild_id"] = str(guild_id)
         if message_id is not None:
             context["message_id"] = str(message_id)
+        if extra_context is not None:
+            context.update(extra_context)
         return CommandRequest(
             name=name,
             arguments=arguments,
@@ -107,6 +117,11 @@ class _DiscordClient(discord.Client):
             owner_id=str(interaction.user.id),
             channel_id=interaction.channel_id,
             guild_id=interaction.guild_id,
+            extra_context={
+                "user_can_manage_channels": str(
+                    interaction.permissions.manage_channels
+                ).lower()
+            },
         )
 
     def _register_commands(self) -> None:
@@ -243,6 +258,19 @@ class _DiscordClient(discord.Client):
                     session_id,
                 )
 
+        @self.tree.command(
+            name="channel-create", description="Create a Discord text channel"
+        )
+        async def channel_create(
+            interaction: discord.Interaction, name: str
+        ) -> None:
+            await self._respond(
+                interaction,
+                self._interaction_request(
+                    interaction, "discord.channel.create", {"name": name}
+                ),
+            )
+
     async def _new_default_session(self, message: discord.Message) -> str:
         responses = await self._execute(
             self._message_request(
@@ -328,6 +356,7 @@ class DiscordGateway(Gateway):
             raise ValueError("discord requires a bot token")
         self.config = config
         self._token = config.token.get_secret_value()
+        self._client: discord.Client | None = None
 
     @property
     def name(self) -> str:
@@ -337,8 +366,59 @@ class DiscordGateway(Gateway):
         """Create the configured Discord client."""
         return _DiscordClient(execute, self.config.allowed_user_ids)
 
+    def register_commands(self, dispatcher: CommandDispatcher) -> None:
+        """Register commands implemented by Discord."""
+        dispatcher.register(
+            "discord.channel.create",
+            self._create_channel,
+            allowed_sources={_SOURCE},
+        )
+
+    async def _create_channel(
+        self, request: CommandRequest
+    ) -> AsyncIterator[CommandResponse]:
+        arguments = _ChannelArguments.model_validate(request.arguments)
+        guild_id = request.external_context.get("guild_id")
+        if guild_id is None:
+            raise ValueError("channel creation requires a Discord guild")
+        if request.external_context.get("user_can_manage_channels") != "true":
+            raise ValueError("you need Manage Channels permission")
+
+        client = self._client
+        if client is None:
+            raise RuntimeError("discord gateway is not running")
+        guild = client.get_guild(int(guild_id))
+        if guild is None:
+            raise ValueError(f"Discord guild is unavailable: {guild_id}")
+        if not guild.me.guild_permissions.manage_channels:
+            raise ValueError("Ethos needs Manage Channels permission")
+
+        try:
+            channel = await guild.create_text_channel(
+                arguments.name,
+                reason=f"Ethos request from Discord user {request.owner_id}",
+            )
+        except discord.Forbidden as error:
+            raise ValueError(
+                "Ethos needs Manage Channels permission"
+            ) from error
+        yield CommandResponse(
+            text=f"channel created: {channel.name}",
+            data={
+                "channel": {
+                    "id": str(channel.id),
+                    "name": channel.name,
+                    "guild_id": guild_id,
+                }
+            },
+        )
+
     async def run(self, execute: CommandExecutor) -> None:
         """Connect to Discord until stopped or cancelled."""
         client = self.create_client(execute)
-        async with client:
-            await client.start(self._token)
+        self._client = client
+        try:
+            async with client:
+                await client.start(self._token)
+        finally:
+            self._client = None
